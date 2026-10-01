@@ -1,5 +1,5 @@
 ---
-title: "Troubleshooting Herdr: Common Issues and Fixes"
+title: "Troubleshooting Herdr: Common Issues and Solutions"
 sidebarTitle: "Troubleshooting"
 description: "Diagnose and fix common Herdr problems: PATH setup, client-server connectivity, agent state, tmux conflicts, SSH auth recovery, logs, and more."
 ---
@@ -59,10 +59,10 @@ herdr integration install <agent>
 To understand why an agent pane is in a particular state, use:
 
 ```bash
-herdr agent explain
+herdr agent explain <target>
 ```
 
-This prints the reasoning behind the current state classification for the focused pane.
+Replace `<target>` with the agent name or pane identifier. This prints the reasoning behind the current state classification for that pane, including which manifest rule matched and why.
 
 </Accordion>
 
@@ -107,13 +107,13 @@ Set `HERDR_AGENT` in the pane environment to tell Herdr which agent owns that pa
 HERDR_AGENT=claude-code claude
 ```
 
-To disable automatic process detection entirely and rely only on integration-reported state, set:
+On Linux, Herdr uses native process-group detection by default. In environments where that fails — for example, container runtimes with constrained `/proc` trees — switch to child-group scanning:
 
 ```bash
-HERDR_PROCESS_DETECTION=0
+HERDR_PROCESS_DETECTION=child-groups
 ```
 
-This is useful when process inspection causes errors or performance problems inside constrained runtimes.
+Valid values are `native` (default) and `child-groups`. Any other value is ignored with a warning and Herdr falls back to native detection.
 
 </Accordion>
 
@@ -143,7 +143,7 @@ herdr machine reconnect <label-or-id>
 
 For Git authentication or SSH signing inside remote panes, enable agent forwarding for the trusted host in your SSH config:
 
-```
+```text
 ForwardAgent yes
 ```
 
@@ -200,7 +200,7 @@ HERDR_LOG=herdr=debug herdr
 
 Include the current log file and any rotated siblings (same names with a numeric suffix) when reporting a problem.
 
-See [Configuration](/configuration) for log path overrides and rotation settings.
+See [Configuration](/configuration#log-files) for log path overrides and rotation settings.
 
 </Accordion>
 

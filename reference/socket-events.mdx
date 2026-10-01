@@ -1,7 +1,7 @@
 ---
-title: "Herdr Socket API: Event Subscriptions Reference"
+title: "Herdr Socket Events: Subscriptions and Filter Reference"
 sidebarTitle: "Events"
-description: "Subscribe to workspace, tab, pane, layout, and worktree events over the Herdr socket — including filter shapes, push payloads, events_lost recovery, and the agent view API."
+description: "Subscribe to workspace, tab, pane, layout, and worktree events over the Herdr socket. Covers filter shapes, events_lost recovery, and the agent view API."
 ---
 
 Herdr keeps the socket connection alive after a subscription is acknowledged and pushes event objects as they occur. This page covers the `events.subscribe` method, every subscribable event type with its payload, the `events_lost` error and recovery pattern, and the `agent.view` projection API for the Agents sidebar.

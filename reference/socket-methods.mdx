@@ -1,7 +1,7 @@
 ---
-title: "Herdr Socket API: Complete Method Reference"
+title: "Herdr Socket API Methods: Complete Reference by Area"
 sidebarTitle: "Methods"
-description: "Full reference for every Herdr socket API method — grouped by area with detailed coverage of agent reporting, pane reads, layout operations, worktrees, and plugins."
+description: "Complete reference for every Herdr socket method — server, pane, agent, layout, worktree, plugin, and event methods with request and response examples."
 ---
 
 Herdr socket API methods use dot-notation names and accept a JSON params object. This page lists every method organized by area, then documents the most important methods in detail with real request and response examples. All method names are taken from the bundled schema; never rely on methods not listed here.
@@ -152,7 +152,10 @@ Toggles, enables, or disables zoom for the target pane's tab. Omitting `pane_id`
 {"id":"req_zoom_toggle","method":"pane.zoom","params":{"pane_id":"w1:p1"}}
 {"id":"req_zoom_on","method":"pane.zoom","params":{"pane_id":"w1:p1","mode":"on"}}
 {"id":"req_zoom_off","method":"pane.zoom","params":{"pane_id":"w1:p1","mode":"off"}}
+{"id":"req_zoom_toggle_explicit","method":"pane.zoom","params":{"pane_id":"w1:p1","mode":"toggle"}}
 ```
+
+Omitting `mode` is equivalent to `"mode":"toggle"`. Valid `mode` values are `toggle`, `on`, and `off`.
 
 Response is `type: "pane_zoom"` with `changed`, `zoom_changed`, `focus_changed`, optional `reason` (`single_pane`, `already_zoomed`, `already_unzoomed`), `pane_id`, `focused_pane_id`, `zoomed`, and `layout`.
 
@@ -183,7 +186,7 @@ Sends a plain UTF-8 string to the pane's PTY.
 
 ### `pane.send_keys`
 
-Sends one or more key combos to the pane. Does **not** accept `prefix+` binding strings.
+Sends one or more key combos to the pane. Does **not** accept `prefix+` binding strings. The `pane.send_input` method's `keys` sub-form (`pane.send_input.keys`) accepts the same key combo strings.
 
 ```json
 {"id":"req_keys","method":"pane.send_keys","params":{"pane_id":"w1:p1","keys":["ctrl+c","enter"]}}

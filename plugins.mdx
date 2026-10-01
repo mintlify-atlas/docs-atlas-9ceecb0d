@@ -268,6 +268,9 @@ Manifest pane `placement` defaults to `overlay`, which opens a temporary zoomed 
   <Card title="tab" icon="browser">
     Opens in a new tab within the current workspace.
   </Card>
+  <Card title="zoomed" icon="expand">
+    Opens as a split pane in the current tab and immediately zooms it to fill the terminal. Returns to the normal split layout when the pane is unzoomed or closed.
+  </Card>
 </CardGroup>
 
 Declare placement directly on a pane entrypoint when the pane should always be transient:
@@ -351,6 +354,8 @@ There is no Herdr-managed plugin storage API in v1. Plugins that need durable st
 | `herdr plugin config-dir <id>` | Print the plugin's config directory path |
 | `herdr plugin link <path>` | Link a local plugin directory |
 | `herdr plugin unlink <id>` | Unregister a locally linked plugin |
+| `herdr plugin enable <id>` | Enable a registered plugin |
+| `herdr plugin disable <id>` | Disable a registered plugin |
 | `herdr plugin install <owner/repo[/subdir]>` | Install a plugin from GitHub |
 | `herdr plugin uninstall <id-or-source>` | Unregister and remove a plugin |
 

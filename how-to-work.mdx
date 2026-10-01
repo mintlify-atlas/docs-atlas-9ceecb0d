@@ -65,6 +65,8 @@ The remote server keeps the panes running and streams their terminal content and
 
 <Note>
   `herdr --remote` differs from SSH-then-run: with `--remote`, the Herdr client runs on **your local machine**. That means local desktop features such as clipboard image paste can be bridged to the remote server. If you SSH first and run `herdr` on the server, Herdr runs entirely on that server and cannot access your local desktop clipboard.
+
+  By default, `herdr --remote` uses your **local** keybindings for the attach. Add `--remote-keybindings server` to use the remote server's keybindings instead.
 </Note>
 
 For repeat targets, add the host to your SSH config:

@@ -1,7 +1,7 @@
 ---
-title: "Herdr Socket API: Transport, Paths, and Schema"
+title: "Herdr Socket API: Transport, Socket Paths, and Schema"
 sidebarTitle: "Overview"
-description: "Understand Herdr's local socket API — newline-delimited JSON over a Unix socket or Windows named pipe — and when to use it over the CLI or agent skill."
+description: "Herdr socket API: newline-delimited JSON over Unix socket or named pipe. Covers transport format, socket paths, resolution order, and schema commands."
 ---
 
 Herdr exposes a local socket API that lets scripts, protocol clients, and coding agents inspect or control a running session with direct request/response control or long-lived event subscriptions. This page explains when to use the socket API, how the transport works, where the socket lives, and how to pull the authoritative schema for the server you are talking to.
@@ -58,7 +58,7 @@ Event subscriptions keep the connection open after the initial acknowledgement r
 
 The default socket lives under your Herdr config directory. Named sessions get their own socket under a `sessions/<name>` subdirectory:
 
-```
+```text
 ~/.config/herdr/herdr.sock
 ~/.config/herdr/sessions/<name>/herdr.sock
 ```

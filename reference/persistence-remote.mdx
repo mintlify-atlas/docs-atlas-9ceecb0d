@@ -1,7 +1,7 @@
 ---
-title: "Remote Persistence and Session Restore in Herdr"
+title: "Herdr Remote Persistence and Session Restore Guide"
 sidebarTitle: "Persistence"
-description: "Learn what Herdr saves across restarts, how agent sessions resume automatically, where session.json lives, and how remote reconnects restore your workspace."
+description: "Understand what Herdr persists across restarts, how agent sessions resume automatically, where session.json lives, and how remote reconnects work."
 ---
 
 Herdr keeps panes running in a background server. When you detach, the server stays alive and your processes keep running. When the server itself stops and restarts — after a reboot, an explicit `herdr server stop`, or a remote reconnect — Herdr restores the saved session shape from disk and, where supported, resumes agent conversations automatically. Understanding what survives each scenario helps you choose the right workflow for local development, remote servers, and AI agent orchestration.
@@ -83,7 +83,7 @@ The following integrations support native session restore:
 | Kimi Code CLI | `3` | `kimi --session <id>` |
 | Qoder CLI | `2` | `qodercli --resume <id>` |
 | Qwen Code | `1` | `qwen --resume <id>` |
-| Letta Code | `1` | `letta --conversation <id>` |
+| Letta Code | `1` | `letta --conversation <id>` or `letta --conversation default --agent <agent-id>` for `default:<agent-id>` |
 | OpenCode | `5` | `opencode --session <id>` |
 | Kilo Code CLI | `1` | `kilo --session <id>` |
 | Hermes Agent | `2` | `hermes --resume <id>` |
@@ -157,10 +157,10 @@ After a client attaches and provides terminal size and theme context, Herdr resu
 For automated remote workflows where no interactive client ever attaches, set explicit dimensions in your config to control how agents see their terminal:
 
 ```toml
-[ui]
+[server]
 # Set a stable headless size for agent panes
-default_cols = 220
-default_rows = 50
+headless_cols = 220
+headless_rows = 50
 ```
 
 ## Summary: what survives each operation

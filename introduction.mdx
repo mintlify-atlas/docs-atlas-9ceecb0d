@@ -16,7 +16,7 @@ Herdr sits between you and your coding agents. It owns the terminals your agents
 Herdr keeps terminals running in a background server when you close the client or lose your SSH connection. After a server or machine restart, Herdr restores the saved layout and can resume supported agent sessions; the original processes do not survive.
 
 **Agent state tracking — never hunt for the stuck one**
-Every pane is marked `working`, `blocked`, `done`, or `idle`. When an agent stops and needs an answer, Herdr says so. The sidebar rolls up status from every agent across all workspaces so you always know which project needs attention.
+Every pane is marked `working`, `blocked`, or `idle`. When an agent stops and needs an answer, Herdr says so. The sidebar rolls up status from every agent across all workspaces so you always know which project needs attention.
 
 **Multi-machine — several machines, one window**
 Keep local work and saved SSH machines together, with a combined agent list and independent reconnects. You do not need separate terminal windows for each host.
@@ -42,10 +42,10 @@ Claude Code, Codex, Cursor, opencode, Grok, and the rest. Herdr does not wrap or
   <Card icon="rocket" href="/quickstart" title="Quickstart">
     Launch Herdr, run your first agent, detach and reattach — up and running in under five minutes.
   </Card>
-  <Card icon="robot" href="https://herdr.dev/docs/agents/" title="Supported Agents">
+  <Card icon="robot" href="/agents" title="Supported Agents">
     Claude Code, Codex, opencode, and every other agent Herdr detects and tracks automatically.
   </Card>
-  <Card icon="terminal" href="https://herdr.dev/docs/socket-api/" title="CLI & Socket API Reference">
+  <Card icon="terminal" href="/reference/socket-api" title="CLI & Socket API Reference">
     Full reference for the Herdr CLI and the socket API used by agents to drive workspaces programmatically.
   </Card>
 </CardGroup>
