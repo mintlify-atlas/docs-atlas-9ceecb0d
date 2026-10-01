@@ -1,0 +1,140 @@
+---
+title: "Herdr Socket API: Transport, Paths, and Schema"
+sidebarTitle: "Overview"
+description: "Understand Herdr's local socket API — newline-delimited JSON over a Unix socket or Windows named pipe — and when to use it over the CLI or agent skill."
+---
+
+Herdr exposes a local socket API that lets scripts, protocol clients, and coding agents inspect or control a running session with direct request/response control or long-lived event subscriptions. This page explains when to use the socket API, how the transport works, where the socket lives, and how to pull the authoritative schema for the server you are talking to.
+
+## Choosing an integration layer
+
+All three integration layers share the same underlying control surface. Choose the one that matches the complexity of your tooling.
+
+| Layer | Best for |
+| --- | --- |
+| **Agent skill** | Teaching a coding agent how to use Herdr from inside a pane. |
+| **CLI wrappers** | Shell scripts, simple orchestration, and human debugging. |
+| **Raw socket API** | Custom tools, protocol clients, and long-lived event subscriptions. |
+
+Start with the CLI wrappers. Use the raw socket API only when you need direct request/response control, need to hold a connection open for a stream of events, or are writing a protocol client.
+
+## Transport
+
+Herdr uses **newline-delimited JSON** over a local socket. On Unix the socket is a Unix domain socket; on Windows it is a named pipe. Send one JSON object per line, terminated by `\n`.
+
+### Request format
+
+Every request has three top-level fields:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | string | Caller-chosen request identifier, echoed in the response. |
+| `method` | string | Dot-notation method name, e.g. `pane.read`. |
+| `params` | object | Method-specific parameters. |
+
+```json
+{"id":"req_1","method":"ping","params":{}}
+```
+
+### Success response
+
+```json
+{"id":"req_1","result":{"type":"pong"}}
+```
+
+### Error response
+
+```json
+{"id":"req_1","error":{"code":"not_found","message":"pane not found"}}
+```
+
+For request lines that reach JSON decoding, error responses echo the original `id` — including when the method or parameters are invalid. If the JSON is unparseable or has no unambiguous top-level string `id`, the error uses an empty `id`. Transport errors such as invalid UTF-8 can close the connection without a response.
+
+### Event subscriptions
+
+Event subscriptions keep the connection open after the initial acknowledgement response. Each subsequent push line is an event object rather than a response. See [Event subscriptions](/reference/socket-events) for the full subscription model.
+
+## Socket paths and resolution order
+
+The default socket lives under your Herdr config directory. Named sessions get their own socket under a `sessions/<name>` subdirectory:
+
+```
+~/.config/herdr/herdr.sock
+~/.config/herdr/sessions/<name>/herdr.sock
+```
+
+Herdr resolves the target socket in the following order:
+
+| Priority | Source |
+| --- | --- |
+| 1 | Explicit CLI `--session <name>` |
+| 2 | `HERDR_SOCKET_PATH` environment variable |
+| 3 | `HERDR_SESSION=<name>` environment variable |
+| 4 | Default session socket |
+
+Use `HERDR_SOCKET_PATH` only for low-level overrides. For plugins, prefer invoking `HERDR_BIN_PATH` with the CLI wrappers when you need portable Windows behavior. Raw socket clients are responsible for using the platform-native local socket form.
+
+## Schema and snapshot commands
+
+The installed CLI can print the socket protocol schema bundled with that Herdr binary. The schema covers raw requests, success responses, error responses, emitted events, and subscription events.
+
+```bash
+# Short summary
+herdr api schema
+
+# Full JSON Schema document
+herdr api schema --json
+
+# Write the document to a file
+herdr api schema --output herdr-api.schema.json
+```
+
+To bootstrap a client against the live session, use `herdr api snapshot`, which prints the live `session.snapshot` response as JSON:
+
+```bash
+herdr api snapshot
+```
+
+The snapshot response includes version and protocol metadata, focused workspace/tab/pane IDs, workspace records, tab records, pane records, tab layout snapshots, and agent records. It is not a subscription. Call `session.snapshot` again after reconnecting or when your local cache may be stale. Attached worktree provenance is included on workspace records.
+
+## What the socket API controls
+
+| Category | Capabilities |
+| --- | --- |
+| **Workspaces** | Create, list, focus, rename, move, close |
+| **Tabs** | Create, list, focus, rename, move, close |
+| **Panes** | List, inspect, split, swap, move, zoom, resize, rename, read, send input, close |
+| **Agents** | List, inspect, read, prompt, wait, rename, focus, start, attach, report state |
+| **Events** | Subscribe to lifecycle streams, wait for output or state changes |
+| **Layout** | Export, apply, and set split ratios |
+| **Worktrees** | Create, open, and remove Git worktree workspaces |
+| **Plugins** | Link, list, enable, disable, invoke actions, open panes |
+| **Integrations** | Install and uninstall built-in integrations |
+| **Server** | Stop, reload config, reload agent manifests |
+
+## Environment variables injected into managed panes
+
+Process-launching methods accept an `env` object. Herdr also injects the following variables into every managed pane process, and these take precedence over caller-provided values:
+
+| Variable | Value |
+| --- | --- |
+| `HERDR_SOCKET_PATH` | Path to the running session socket |
+| `HERDR_ENV` | `1` |
+| `HERDR_WORKSPACE_ID` | Pane's workspace ID |
+| `HERDR_TAB_ID` | Pane's tab ID |
+| `HERDR_PANE_ID` | Pane's public pane ID |
+
+## Protocol stability
+
+The client-rendered Herdr UI uses a stable **endpoint generation** mechanism for local and SSH servers. Client and server builds do not need to match exactly. During connection setup they negotiate the core snapshot, screen, input, and blob codecs. The server advertises the API methods and optional capabilities it supports.
+
+Key stability guarantees:
+
+- Missing methods disable only those specific actions; they do not disconnect the UI.
+- Rejected or timed-out actions are reported without ending the connection.
+- Servers from before endpoint generation 1 require one final update.
+- JSON API clients should ignore unknown fields and handle unsupported methods as normal errors.
+
+For saved SSH federation, the server must advertise both `surface_interest` (so only the selected machine streams a pane surface) and `health_check` (so a quiet broken connection does not stay Online indefinitely). A server missing this lifecycle support stays at Attention until explicitly updated.
+
+The numbered binary protocol is reserved for same-install and internal operations including direct terminal attach and live handoff. Check `ping` or `herdr status` before using those operations across different builds.

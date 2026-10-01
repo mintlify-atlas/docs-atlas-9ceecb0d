@@ -1,0 +1,464 @@
+---
+title: "Herdr Configuration Reference: All config.toml Keys"
+sidebarTitle: "Config Reference"
+description: "Every canonical config.toml key Herdr reads, organized by section, with TOML key, type, default value, allowed values, and description."
+---
+
+Herdr reads a single `config.toml` file at startup. Every key documented here is canonical — Herdr ignores unknown keys and applies defaults for any key you omit. To see the full commented default configuration at any time, run:
+
+```bash
+herdr --default-config
+```
+
+Most settings are reloadable at runtime without restarting panes:
+
+```bash
+herdr server reload-config
+```
+
+Settings that require a restart or reattach are noted in their descriptions below.
+
+---
+
+## General
+
+Top-level keys not nested under a section.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `onboarding` | boolean | unset | Show first-run setup on startup. Missing or `true` shows onboarding; completing onboarding writes `onboarding = false`. |
+
+---
+
+## `[server]`
+
+Controls the virtual terminal dimensions used when no client is attached (headless mode).
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `server.headless_cols` | integer | `120` | Virtual terminal width for layout and newly created panes when no client is attached. Must be greater than zero. |
+| `server.headless_rows` | integer | `40` | Virtual terminal height for layout and newly created panes when no client is attached. Must be greater than zero. |
+
+---
+
+## `[terminal]`
+
+Controls shell selection, startup mode, and working-directory policy for new panes.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `terminal.default_shell` | string | `""` | Executable for new interactive panes. Empty means `$SHELL`, then `/bin/sh`; on Windows, `pwsh.exe` when available on `PATH`, otherwise `powershell.exe`. |
+| `terminal.shell_mode` | enum | `"auto"` | Startup mode for new interactive pane shells: `auto`, `login`, or `non_login`. |
+| `terminal.new_cwd` | enum | `"follow"` | CWD policy for new interactive panes, tabs, and workspaces: `follow` (source pane or workspace), `home`, `current`, or `path`. |
+| `terminal.kitty_graphics` | boolean | `true` | Render pane images in Kitty graphics-compatible outer terminals. Set `false` to disable. Restart the server or reattach the client after changing. In remote sessions, the server config controls parsing; the local client config controls outer-terminal output. |
+
+---
+
+## `[update]`
+
+Controls automatic version and manifest update checks.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `update.channel` | enum | `"stable"` | Update channel for background version checks and `herdr update`: `stable` or `preview`. Stable Windows builds default to `stable`; existing Windows preview installs stay on `preview` until explicitly switched. Homebrew, mise, and Nix installs ignore the preview channel. |
+| `update.version_check` | boolean | `true` | Check herdr.dev for new Herdr versions in the background. |
+| `update.manifest_check` | boolean | `true` | Check herdr.dev for remote agent-detection manifest updates in the background. Bundled manifests and local overrides still apply when disabled. |
+
+---
+
+## `[session]`
+
+Controls session restore behavior.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `session.resume_agents_on_restore` | boolean | `true` | Resume supported AI-agent panes into their native conversation sessions when restoring a Herdr session. |
+| `session.startup_per_agent_delay_ms` | integer | `100` | Milliseconds between automatic agent restores after a server restart. The first agent starts without this delay; `0` disables spacing. Does not delay manual launches or explicit terminal attaches. Restart the server to apply. |
+
+---
+
+## `[worktrees]`
+
+Controls where Herdr creates Git worktree checkouts.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `worktrees.directory` | string | `"~/.herdr/worktrees"` | Root directory under which Herdr creates `<repo>/<branch-slug>` checkouts. |
+
+---
+
+## `[ui]`
+
+Controls the overall UI layout, mouse behavior, sidebar dimensions, pane borders, and tab bar configuration.
+
+### Mouse and focus
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.mouse_capture` | boolean | `true` | Capture mouse input for Herdr's mouse UI. |
+| `ui.copy_on_select` | boolean | `true` | Automatically copy text selected by mouse drag or double-click. When disabled, Ctrl+C or a host-forwarded Cmd+C copies and clears the retained selection. |
+| `ui.mouse_scroll_lines` | integer | `3` | Lines to scroll per mouse wheel notch. |
+| `ui.host_cursor` | enum | `auto` | Host cursor policy: `auto`, `native`, or `drawn`. |
+| `ui.right_click_passthrough_modifier` | string | `""` | Modifier that lets right-click gestures pass through to pane apps. Empty disables it. Accepts `ctrl`, `alt`, `cmd`, `super`, `meta`, `hyper`, or a `+`-separated combination. `shift` is rejected. |
+| `ui.redraw_on_focus_gained` | boolean | `true` | Force a full host-terminal redraw when the outer terminal regains focus. |
+
+### Sidebar layout
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.sidebar_width` | integer | `26` | Default expanded sidebar width in columns. Auto-scales based on workspace names. |
+| `ui.sidebar_min_width` | integer | `18` | Minimum sidebar width in columns when expanded. |
+| `ui.sidebar_max_width` | integer | `36` | Maximum sidebar width in columns when expanded. |
+| `ui.sidebar_start_collapsed` | boolean | `false` | Start Herdr with the sidebar collapsed. Takes effect on the next launch. |
+| `ui.sidebar_collapsed_mode` | enum | `compact` | Collapsed sidebar presentation: `compact` or `hidden`. |
+| `ui.mobile_width_threshold` | integer | `64` | Terminal width at or below which Herdr uses the mobile single-column layout. |
+
+### Confirmation and naming prompts
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.confirm_close` | boolean | `true` | Ask for confirmation before closing a workspace from the TUI. Ordinary CLI/API closes remain immediate. |
+| `ui.prompt_new_tab_name` | boolean | `true` | Ask for a tab name before creating a new tab from the TUI. |
+| `ui.prompt_new_workspace_name` | boolean | `false` | Ask for a workspace name before interactive TUI workspace creation. |
+
+### Pane appearance
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.pane_borders` | enum | `"auto"` | Draw borders around split panes. `auto`: only for split panes. `always`: also frames a lone pane (requires `pane_outer_borders`). `off`: disabled. Legacy booleans parse: `true` → `auto`, `false` → `off`. |
+| `ui.pane_outer_borders` | boolean | `true` | Draw borders along the outside edge of the pane area. Disable with `pane_gaps` disabled for tmux-style internal splitters without an outside frame. |
+| `ui.pane_scrollbars` | boolean | `true` | Draw interactive scrollbars beside terminal panes. |
+| `ui.pane_gaps` | boolean | `true` | Keep split panes visually separated instead of sharing divider borders. |
+| `ui.show_agent_labels_on_pane_borders` | boolean | `false` | Show agent labels in split pane borders when no manual pane label is set. |
+
+### Tab bar
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.hide_tab_bar_when_single_tab` | boolean | `false` | Hide the tab row when the workspace has only one tab. |
+| `ui.tab_bar_position` | enum | `"top"` | Place the tab row `top` or `bottom` relative to terminal panes. |
+| `ui.tab_bar_right` | array | `[]` | Ordered right-aligned tab bar entries. Supported types: `zoom`, `hostname`, `datetime`, `text`, `command`. |
+| `ui.tab_bar_right_separator` | string | `" "` | Text inserted between visible right-aligned tab bar entries. |
+
+### Window title
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.window_title` | string | `"{hostname}: {workspace}"` | Title written to the terminal Herdr runs in. Tokens: `{hostname}`, `{workspace}`, `{tab}`, `{pane}`, `{terminal_title}`. Empty leaves the outer title unchanged. |
+
+### Agent panel
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.agent_panel_sort` | enum | `"spaces"` | Agent sidebar ordering: `spaces` (by workspace; `workspaces` is an accepted alias) or `priority`. |
+| `ui.status_indicators` | enum | `"dots"` | Agent state indicators: `dots` (compact color dots) or `symbols` (distinct static symbols). |
+| `ui.accent` | color | `"cyan"` | Accent color for highlights, borders, and navigation UI. Accepts hex (`#89b4fa`), named colors (`cyan`, `blue`), or RGB (`rgb(137,180,250)`). |
+
+---
+
+## `[ui.sidebar]`
+
+Controls the layout of Agent and Space rows in the expanded sidebar.
+
+### Agent rows
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.sidebar.agents.row_gap` | integer | `0` | Blank terminal rows between expanded Agent sidebar entries. Set to `1` to restore the previous spacing. |
+| `ui.sidebar.agents.rows` | list of token rows | `[["state_icon", "machine", "workspace", "tab"], ["agent"]]` | Default expanded Agent sidebar layout. Entries may be token strings or inline `{ token, fg, bold, dim, rules }` style tables. Up to 16 rows, 16 tokens per row. |
+| `ui.sidebar.agents.rows_by_agent` | table of token rows | `{}` | Complete Agent-row layout overrides keyed by strict canonical agent id. Agents without an override use `ui.sidebar.agents.rows`. |
+
+### Space rows
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.sidebar.spaces.row_gap` | integer | `0` | Blank terminal rows between worktree groups and unrelated top-level Spaces. Worktree parents and their indented children remain packed. |
+| `ui.sidebar.spaces.rows` | list of token rows | `[["state_icon", "workspace"], ["branch", "git_status"]]` | Expanded Space sidebar layout. Same format as agent rows. `state_icon` and `git_status` accept fixed styles only. |
+
+Row token entries may be plain strings or inline style tables. Text-valued built-ins and `$name` metadata tokens accept up to 16 ordered rules using `equals`, `contains`, `starts_with`, `gt`, or `lt`; the first match overrides specified styles.
+
+---
+
+## `[ui.toast]`
+
+Controls popup notification delivery, position, and clipboard toasts.
+
+### Delivery
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.toast.delivery` | enum | `"off"` | Popup notification delivery: `off` (disabled), `herdr` (in-app toasts), `terminal` (asks the outer terminal for a desktop notification), `system` (asks the OS notification service directly). |
+| `ui.toast.delay_seconds` | integer | `1` | Seconds to wait before sending finished or needs-input agent notifications. Herdr notifies only if the pane is still in the same state when the delay expires. Valid range: 0–3600. |
+
+### In-app toast position
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.toast.herdr.position` | enum | `"bottom-right"` | In-app toast position relative to the full Herdr frame: `top-left`, `top-right`, `bottom-left`, or `bottom-right`. |
+
+### Clipboard popup
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.toast.clipboard.enabled` | boolean | `true` | Show the copied-to-clipboard popup after a mouse copy. |
+| `ui.toast.clipboard.position` | enum | `"bottom-center"` | Copied-to-clipboard popup position: `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, or `bottom-right`. |
+
+---
+
+## `[ui.sound]`
+
+Controls sound playback for agent state changes.
+
+### Global sound settings
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `ui.sound.enabled` | boolean | `true` | Play sounds when agents change state in background workspaces. |
+| `ui.sound.path` | path | unset | Optional `.mp3` file used for all notification sounds. Relative paths resolve from the config file's directory. |
+| `ui.sound.done_path` | path | unset | Optional `.mp3` file for "done" notifications. |
+| `ui.sound.request_path` | path | unset | Optional `.mp3` file for "request" notifications. |
+
+### Per-agent sound overrides
+
+Each key accepts `"default"`, `"on"`, or `"off"`. `"default"` follows the global `ui.sound.enabled` setting.
+
+| Key | Default | Agent |
+|---|---|---|
+| `ui.sound.agents.pi` | `"default"` | Pi |
+| `ui.sound.agents.claude` | `"default"` | Claude Code |
+| `ui.sound.agents.codex` | `"default"` | Codex |
+| `ui.sound.agents.gemini` | `"default"` | Gemini CLI |
+| `ui.sound.agents.cursor` | `"default"` | Cursor Agent CLI |
+| `ui.sound.agents.devin` | `"default"` | Devin |
+| `ui.sound.agents.agy` | `"default"` | Agy |
+| `ui.sound.agents.cline` | `"default"` | Cline |
+| `ui.sound.agents.open_code` | `"default"` | OpenCode |
+| `ui.sound.agents.github_copilot` | `"default"` | GitHub Copilot CLI |
+| `ui.sound.agents.kimi` | `"default"` | Kimi Code CLI |
+| `ui.sound.agents.kiro` | `"default"` | Kiro |
+| `ui.sound.agents.droid` | `"off"` | Droid |
+| `ui.sound.agents.amp` | `"default"` | Amp |
+| `ui.sound.agents.grok` | `"default"` | Grok CLI |
+| `ui.sound.agents.hermes` | `"default"` | Hermes Agent |
+| `ui.sound.agents.kilo` | `"default"` | Kilo Code CLI |
+| `ui.sound.agents.qodercli` | `"default"` | Qoder CLI |
+| `ui.sound.agents.qwen` | `"default"` | Qwen Code |
+| `ui.sound.agents.letta` | `"default"` | Letta Code |
+| `ui.sound.agents.maki` | `"default"` | Maki |
+| `ui.sound.agents.muse` | `"default"` | Muse |
+
+---
+
+## `[theme]`
+
+Controls the built-in theme and optional per-token color overrides. For appearance auto-switching, `theme.auto_switch` follows the host terminal's light/dark signal and selects between `theme.dark_name` and `theme.light_name`.
+
+### Base theme
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `theme.name` | string | `"catppuccin"` | Built-in theme name. |
+| `theme.auto_switch` | boolean | `false` | Follow host terminal light/dark appearance and switch between theme names. |
+| `theme.dark_name` | string | unset | Theme name used when `auto_switch` selects a dark appearance. |
+| `theme.light_name` | string | unset | Theme name used when `auto_switch` selects a light appearance. |
+
+### Color token overrides
+
+All color keys accept hex (`#89b4fa`), named colors (`cyan`, `blue`), `rgb(r,g,b)`, or reset aliases. Keys under `[theme.custom]` apply on top of the base theme in all modes. Keys under `[theme.custom.dark]` and `[theme.custom.light]` apply after `[theme.custom]` only when `auto_switch` selects that appearance. All default to unset (inherited from the base theme).
+
+#### `[theme.custom]` — universal overrides
+
+| Key | Description |
+|---|---|
+| `theme.custom.accent` | Accent color. |
+| `theme.custom.panel_bg` | Panel background. |
+| `theme.custom.sidebar_bg` | Desktop sidebar background without changing other panel surfaces. |
+| `theme.custom.active_row_bg` | Active Space and focused Agent row background. |
+| `theme.custom.selection_bg` | Navigate-mode cursor row background in the sidebar. |
+| `theme.custom.surface0` | `surface0` color token. |
+| `theme.custom.surface1` | `surface1` color token. |
+| `theme.custom.surface_dim` | `surface_dim` color token. |
+| `theme.custom.overlay0` | `overlay0` color token. |
+| `theme.custom.overlay1` | `overlay1` color token. |
+| `theme.custom.text` | Primary text color. |
+| `theme.custom.subtext0` | Secondary text color. |
+| `theme.custom.mauve` | `mauve` semantic color. |
+| `theme.custom.green` | `green` semantic color. |
+| `theme.custom.yellow` | `yellow` semantic color. |
+| `theme.custom.red` | `red` semantic color. |
+| `theme.custom.blue` | `blue` semantic color. |
+| `theme.custom.teal` | `teal` semantic color. |
+| `theme.custom.peach` | `peach` semantic color. |
+
+#### `[theme.custom.dark]` and `[theme.custom.light]` — appearance-specific overrides
+
+Same token keys as `[theme.custom]`, prefixed with `theme.custom.dark.` or `theme.custom.light.`. Applied after `[theme.custom]` when `auto_switch` selects the corresponding appearance.
+
+---
+
+## `[keys]`
+
+Controls all keybindings. The prefix key enters prefix mode; all other bindings are pressed after the prefix unless stated otherwise.
+
+### Prefix
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.prefix` | keybinding | `"ctrl+b"` | Prefix key(s) to enter prefix mode. Accepts a single string or an array to accept multiple keys (e.g. `["ctrl+b", "f12"]`). |
+
+### Sessions and workspaces
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.new_workspace` | keybinding | `"prefix+shift+n"` | Create a new workspace. |
+| `keys.rename_workspace` | keybinding | `"prefix+shift+w"` | Rename the selected workspace. |
+| `keys.close_workspace` | keybinding | `"prefix+shift+d"` | Close the selected workspace. |
+| `keys.workspace_picker` | keybinding | `"prefix+w"` | Open the workspace navigation surface. |
+| `keys.goto` | keybinding | `"prefix+g"` | Open the session navigator. |
+| `keys.previous_workspace` | keybinding | unset | Select the previous workspace. |
+| `keys.next_workspace` | keybinding | unset | Select the next workspace. |
+| `keys.switch_workspace` | keybinding | unset | Switch to workspace 1–9 from prefix mode. |
+
+### Worktrees
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.new_worktree` | keybinding | `"prefix+shift+g"` | Create a Git worktree from the selected workspace. |
+| `keys.open_worktree` | keybinding | unset | Open an existing Git worktree from the selected workspace. |
+| `keys.remove_worktree` | keybinding | unset | Delete the selected managed worktree checkout after confirmation. |
+
+### Tabs
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.new_tab` | keybinding | `"prefix+c"` | Create a new tab in the active workspace. |
+| `keys.rename_tab` | keybinding | `"prefix+shift+t"` | Rename the active tab. |
+| `keys.previous_tab` | keybinding | `"prefix+p"` | Select the previous tab. |
+| `keys.next_tab` | keybinding | `"prefix+n"` | Select the next tab. |
+| `keys.move_tab_previous` | keybinding | unset | Move the active tab one position toward the front. |
+| `keys.move_tab_next` | keybinding | unset | Move the active tab one position toward the back. |
+| `keys.switch_tab` | keybinding | `"prefix+1..9"` | Switch to tab 1–9. |
+| `keys.close_tab` | keybinding | `"prefix+shift+x"` | Close the active tab. |
+
+### Panes
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.split_vertical` | keybinding | `"prefix+v"` | Split pane vertically (side by side). |
+| `keys.split_horizontal` | keybinding | `"prefix+minus"` | Split pane horizontally (stacked). |
+| `keys.close_pane` | keybinding | `"prefix+x"` | Close the focused pane. |
+| `keys.rename_pane` | keybinding | `"prefix+shift+p"` | Rename the focused pane. |
+| `keys.zoom` | keybinding | `"prefix+z"` | Toggle zoom for the focused pane. (`fullscreen` is accepted as an alias.) |
+| `keys.copy_mode` | keybinding | `"prefix+["` | Enter keyboard copy mode for the focused pane. |
+| `keys.edit_scrollback` | keybinding | `"prefix+e"` | Open the focused pane scrollback in `$EDITOR`. |
+| `keys.clear_pane` | keybinding | unset | Clear the focused pane screen and scrollback, keeping the current cursor line. Sends no input to the running program. Example: `"prefix+ctrl+k"`. |
+| `keys.resize_mode` | keybinding | `"prefix+r"` | Enter resize mode. |
+| `keys.resize_pane_left` | keybinding | unset | Resize the focused pane toward the left. |
+| `keys.resize_pane_down` | keybinding | unset | Resize the focused pane downward. |
+| `keys.resize_pane_up` | keybinding | unset | Resize the focused pane upward. |
+| `keys.resize_pane_right` | keybinding | unset | Resize the focused pane toward the right. |
+| `keys.cycle_pane_next` | keybinding | `"prefix+tab"` | Cycle to the next pane. |
+| `keys.cycle_pane_previous` | keybinding | `"prefix+shift+tab"` | Cycle to the previous pane. |
+| `keys.last_pane` | keybinding | unset | Focus the last focused pane across workspaces and tabs. |
+
+### Pane focus
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.focus_pane_left` | keybinding | `"prefix+h"` | Focus the pane to the left. |
+| `keys.focus_pane_down` | keybinding | `"prefix+j"` | Focus the pane below. |
+| `keys.focus_pane_up` | keybinding | `"prefix+k"` | Focus the pane above. |
+| `keys.focus_pane_right` | keybinding | `"prefix+l"` | Focus the pane to the right. |
+
+### Pane swap
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.swap_pane_left` | keybinding | `"prefix+shift+h"` | Swap the focused pane with the pane to the left. |
+| `keys.swap_pane_down` | keybinding | `"prefix+shift+j"` | Swap the focused pane with the pane below. |
+| `keys.swap_pane_up` | keybinding | `"prefix+shift+k"` | Swap the focused pane with the pane above. |
+| `keys.swap_pane_right` | keybinding | `"prefix+shift+l"` | Swap the focused pane with the pane to the right. |
+
+### Navigate mode
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.navigate_workspace_up` | keybinding | `"up"` | Move workspace selection up in navigate mode. |
+| `keys.navigate_workspace_down` | keybinding | `"down"` | Move workspace selection down in navigate mode. |
+| `keys.navigate_pane_left` | keybinding | `"h"` | Focus the pane to the left in navigate mode. Left arrow is always an alias. |
+| `keys.navigate_pane_down` | keybinding | `"j"` | Focus the pane below in navigate mode. |
+| `keys.navigate_pane_up` | keybinding | `"k"` | Focus the pane above in navigate mode. |
+| `keys.navigate_pane_right` | keybinding | `"l"` | Focus the pane to the right in navigate mode. Right arrow is always an alias. |
+
+### Agent navigation
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.previous_agent` | keybinding | unset | Focus the previous agent shown in the agent panel. |
+| `keys.next_agent` | keybinding | unset | Focus the next agent shown in the agent panel. |
+| `keys.focus_agent` | keybinding | unset | Focus an agent by index 1–9. |
+
+### Sidebar
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.toggle_sidebar` | keybinding | `"prefix+b"` | Toggle sidebar collapse. |
+
+### Indexed shortcuts
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.indexed.tabs` | string | unset | Modifier combo for tab shortcuts 1–9. |
+| `keys.indexed.workspaces` | string | unset | Modifier combo for workspace shortcuts 1–9. |
+| `keys.indexed.agents` | string | unset | Modifier combo for agent shortcuts 1–9. |
+
+### Other
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `keys.detach` | keybinding | `"prefix+q"` | Detach the current client from its Herdr server. |
+| `keys.reload_config` | keybinding | `"prefix+shift+r"` | Reload `config.toml` in the running app/server. |
+| `keys.open_notification_target` | keybinding | `"prefix+o"` | Focus the currently visible notification target. |
+| `keys.settings` | keybinding | `"prefix+s"` | Open settings. |
+| `keys.help` | keybinding | `"prefix+?"` | Open keybinding help. |
+| `keys.remote_image_paste` | string | `"ctrl+v"` | Local-client shortcut that sends a clipboard image to a remote Herdr session. |
+
+### Custom command keybindings
+
+Custom command bindings are declared as `[[keys.command]]` tables. Each table may have `key`, `action`, and other action-specific fields. These are user-defined and not enumerated per key; see the Configuration guide for custom command keybinding examples.
+
+---
+
+## `[remote]`
+
+Controls SSH connection behavior for `herdr --remote`.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `remote.manage_ssh_config` | boolean | `true` | Add keepalive fallbacks and private connection reuse for `herdr --remote`. Set `false` to run plain `ssh` unchanged. |
+
+---
+
+## `[advanced]`
+
+Low-level settings for scrollback memory management.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `advanced.scrollback_limit_bytes` | integer | `10000000` | Maximum scrollback buffer size in bytes retained per pane terminal (~10 MB). The legacy key `scrollback_lines` is accepted as an alias. |
+
+---
+
+## `[experimental]`
+
+Experimental features that may change or be removed. Enable only the features you need.
+
+| Key | Type | Default | Description |
+|---|---|---|---|
+| `experimental.allow_nested` | boolean | `false` | Allow launching Herdr inside an existing Herdr pane. |
+| `experimental.pane_history` | boolean | `false` | Persist pane screen history to `session-history.json`. |
+| `experimental.kitty_graphics` | boolean | unset | Deprecated compatibility key for `terminal.kitty_graphics`. Existing `true`/`false` values remain supported; `terminal.kitty_graphics` takes precedence when both are set. |
+| `experimental.reveal_hidden_cursor_for_cjk_ime` | boolean | `false` | Expose the focused pane's cursor anchor to the outer terminal even when the pane requested `?25l`, so macOS native input methods keep tracking the IME candidate window. Trade-off: an extra hardware cursor is visible for apps that hide the cursor without painting a replacement (e.g. Vim normal mode). |
+| `experimental.cjk_ime_agents` | list of strings | `[]` | Restrict `reveal_hidden_cursor_for_cjk_ime` to focused panes whose detected agent matches one of these names (case-insensitive). Empty list applies to any focused pane. |
+| `experimental.cjk_ime_cursor_shape` | enum | `"steady_block"` | Cursor shape for the IME anchor when `reveal_hidden_cursor_for_cjk_ime` is enabled: `block`, `steady_block`, `underline`, `steady_underline`, `bar`, or `steady_bar`. |
+| `experimental.switch_ascii_input_source_in_prefix` | boolean | `false` | While prefix mode is active, temporarily switch the host input source to an ASCII-capable mode so prefix commands are read correctly when an IME is active. macOS and Windows only; on Windows currently limited to the Korean IME. |

@@ -1,0 +1,375 @@
+---
+title: "Herdr Configuration: Keybindings, Themes, and More"
+sidebarTitle: "Configuration"
+description: "Set up your Herdr config file, customize keybindings, themes, shell defaults, notifications, sidebar layouts, and advanced runtime options."
+---
+
+Herdr works without a config file. Add one when you want custom keys, themes, sidebar layouts, notifications, or advanced behavior. Most settings take effect immediately on reload — no restart required.
+
+## Config File Location
+
+Herdr reads its config from a single TOML file:
+
+```text
+Linux and macOS: ~/.config/herdr/config.toml
+Windows:          %APPDATA%\herdr\config.toml
+```
+
+Run `herdr --help` to see the resolved config path for your system.
+
+To start from a complete documented baseline, print the full default config and save it:
+
+```bash
+herdr --default-config > ~/.config/herdr/config.toml
+```
+
+If a config value is invalid, Herdr falls back to a safe default and shows a startup warning. Set `onboarding = false` to skip the first-run setup flow after initial setup:
+
+```toml
+onboarding = false
+```
+
+## Reloading Config
+
+Reload a running server after editing `config.toml`:
+
+```bash
+herdr server reload-config
+```
+
+You can also open the global menu in Herdr and choose **reload config**. Reload applies most UI settings without restarting panes. Startup-only settings still need a server restart.
+
+<Note>
+  Themes, sidebar layouts, copy behavior, and other presentation settings come from the **client's** local config — even when viewing a remote SSH machine. Pane defaults, worktrees, integrations, and custom commands belong to the **server** where the panes run. The UI's `reload config` action reloads both sides.
+</Note>
+
+## Terminal Defaults
+
+<Accordion title="Default shell">
+  Set the executable Herdr uses for newly created interactive panes:
+
+  ```toml
+  [terminal]
+  default_shell = "nu"
+  ```
+
+  When unset or empty, Herdr uses `$SHELL`, then `/bin/sh` on Unix. On Windows it uses `pwsh.exe` (PowerShell 7) when it resolves on `PATH`, and otherwise `powershell.exe` (Windows PowerShell 5.1). This is an executable name or path, not a shell command line.
+</Accordion>
+
+<Accordion title="Shell startup mode">
+  Set how Herdr starts newly created interactive pane shells:
+
+  ```toml
+  [terminal]
+  shell_mode = "auto"
+  ```
+
+  `"auto"` starts login shells on macOS so login-only PATH setup such as `/usr/libexec/path_helper` and Homebrew initialization runs in new panes. On other platforms it keeps non-login behavior. Use `"login"` to force login-shell startup or `"non_login"` to force non-login startup.
+</Accordion>
+
+<Accordion title="Working directory for new panes">
+  Set the working directory policy for new panes, tabs, and workspaces:
+
+  ```toml
+  [terminal]
+  new_cwd = "follow"
+  ```
+
+  `"follow"` inherits the source pane or workspace directory. Use `"home"` to always start in `$HOME`, `"current"` to use Herdr's process directory, or a fixed path such as `"~/Projects"`. Explicit `--cwd` values from the CLI still take precedence.
+</Accordion>
+
+## Headless Terminal Size
+
+When no client is attached, the server uses a 120×40 virtual terminal for layout and new panes. Change this fallback for headless orchestration:
+
+```toml
+[server]
+headless_cols = 160
+headless_rows = 50
+```
+
+With one attached client, all tabs follow its size. With multiple clients, each viewed tab follows the client that most recently interacted with it.
+
+## Worktrees Directory
+
+Set the root directory Herdr uses for Git worktree checkouts created from the sidebar:
+
+```toml
+[worktrees]
+directory = "~/.herdr/worktrees"
+```
+
+Herdr creates checkouts under `<directory>/<repo>/<branch-slug>`. For sibling-style checkouts, set this to a directory such as `~/Projects/herdr-worktrees`.
+
+## Keybindings
+
+Herdr has a prefix mode similar to tmux. The default prefix is `ctrl+b`. For a full introduction to the prefix model and prefix-free setup, see [Keyboard](/keyboard).
+
+A keybinding override looks like this:
+
+```toml
+[keys]
+prefix = "ctrl+b"
+goto = "prefix+g"
+new_tab = "prefix+c"
+next_tab = "prefix+n"
+previous_tab = "prefix+p"
+focus_pane_left = "prefix+h"
+navigate_workspace_down = "j"
+navigate_pane_down = "ctrl+j"
+split_horizontal = "prefix+minus"
+```
+
+A binding may be an array when one action needs multiple shortcuts:
+
+```toml
+[keys]
+next_tab = ["prefix+n", "ctrl+alt+]"]
+```
+
+Use `1..9` for indexed jumps:
+
+```toml
+[keys]
+switch_tab = "prefix+1..9"
+switch_workspace = "prefix+shift+1..9"
+focus_agent = "prefix+alt+1..9"
+```
+
+For optional direct-resize actions without entering resize mode:
+
+```toml
+[keys]
+resize_pane_left  = "ctrl+shift+alt+left"
+resize_pane_down  = "ctrl+shift+alt+down"
+resize_pane_up    = "ctrl+shift+alt+up"
+resize_pane_right = "ctrl+shift+alt+right"
+```
+
+<Note>
+  Plain direct printable keys such as `n` are unsafe in general bindings because they intercept typing. Use `prefix+n` unless you intentionally want a direct binding. The `navigate_workspace_*` and `navigate_pane_*` fields are navigate-mode-only and may use plain keys such as `j` or `k`.
+</Note>
+
+## Custom Command Keybindings
+
+Bind arbitrary shell commands, popups, panes, or plugin actions to keys using `[[keys.command]]` tables.
+
+<Tabs>
+  <Tab title="Popup">
+    ```toml
+    [[keys.command]]
+    key = "prefix+alt+g"
+    type = "popup"
+    command = "lazygit"
+    description = "run lazygit"
+    width = "80%"
+    height = "80%"
+    ```
+
+    `type = "popup"` opens a session-modal popup. The popup receives all terminal input until its command exits. `width` and `height` are optional — omit them for the default half-size popup, use numbers for terminal cells, or use strings like `"80%"` for percentages.
+  </Tab>
+  <Tab title="Scratch terminal">
+    ```toml
+    [[keys.command]]
+    key = "prefix+t"
+    type = "popup"
+    command = "exec \"${SHELL:-sh}\""
+    description = "open scratch terminal"
+    width = "80%"
+    height = "80%"
+    ```
+
+    On Windows, use `command = "powershell.exe -NoLogo"` instead. Exit the shell to close the popup.
+  </Tab>
+  <Tab title="Background shell">
+    ```toml
+    [[keys.command]]
+    key = "prefix+alt+b"
+    type = "shell"
+    command = "my-background-script.sh"
+    description = "run in background"
+    ```
+
+    `type = "shell"` runs detached in the background.
+  </Tab>
+  <Tab title="Plugin action">
+    ```toml
+    [[keys.command]]
+    key = "prefix+l"
+    type = "plugin_action"
+    command = "example.layout.apply"
+    description = "apply layout"
+    ```
+
+    `type = "plugin_action"` invokes an installed plugin action by its qualified ID.
+  </Tab>
+</Tabs>
+
+Custom commands receive environment variables including `HERDR_SOCKET_PATH`, `HERDR_BIN_PATH`, `HERDR_ACTIVE_WORKSPACE_ID`, `HERDR_ACTIVE_TAB_ID`, `HERDR_ACTIVE_PANE_ID`, and `HERDR_ACTIVE_PANE_CWD`. Shell commands run from the focused pane's working directory when Herdr can detect it.
+
+## Theme
+
+Choose a built-in theme:
+
+```toml
+[theme]
+name = "catppuccin"
+```
+
+Use `"terminal"` to follow your host terminal's ANSI palette. Enable automatic light/dark switching:
+
+```toml
+[theme]
+name = "catppuccin"
+auto_switch = true
+light_name = "catppuccin-latte"
+dark_name = "catppuccin"
+```
+
+Override individual colors:
+
+```toml
+[theme.custom]
+sidebar_bg   = "#181825"
+active_row_bg = "#1e1e2e"
+selection_bg = "#313244"
+panel_bg     = "reset"
+accent       = "#a6e3a1"
+green        = "#a6e3a1"
+blue         = "#89b4fa"
+red          = "#f38ba8"
+yellow       = "#f9e2af"
+```
+
+Color values accept hex, named colors, `rgb(r,g,b)`, or reset aliases like `reset`, `default`, `none`, and `transparent`.
+
+## UI and Sidebar
+
+<Accordion title="Pane borders and tab bar">
+  `ui.pane_borders` accepts `"auto"` (borders only for split panes), `"always"` (also frame a single pane), or `"off"`.
+
+  Place the tab bar at the bottom:
+
+  ```toml
+  [ui]
+  tab_bar_position = "bottom"
+  ```
+</Accordion>
+
+<Accordion title="Status bar right section">
+  Add an ordered status area at the right edge of the tab row:
+
+  ```toml
+  [ui]
+  tab_bar_right = [
+    { type = "zoom" },
+    { type = "hostname" },
+    { type = "datetime", format = "%H:%M" },
+    { type = "text", text = "prod" },
+    { type = "command", command = "~/.config/herdr/status.sh", interval_seconds = 5, timeout_seconds = 2 },
+  ]
+  tab_bar_right_separator = " · "
+  ```
+
+  `hostname`, `datetime`, and `command` resolve on the Herdr server, so `herdr --remote` shows the remote machine's values.
+</Accordion>
+
+<Accordion title="Window title">
+  Configure what Herdr writes to the outer terminal window title:
+
+  ```toml
+  [ui]
+  window_title = "{hostname}: {workspace}"
+  ```
+
+  Available tokens: `{hostname}`, `{workspace}`, `{tab}`, `{pane}`, and `{terminal_title}`. Use `{{` and `}}` for literal braces. Set `window_title = ""` to leave the outer terminal title alone.
+</Accordion>
+
+<Accordion title="Sidebar row layouts">
+  Customize the expanded sidebar rows for agents and spaces:
+
+  ```toml
+  [ui.sidebar.agents]
+  row_gap = 0
+  rows = [
+    ["state_icon", "machine", "workspace", "tab"],
+    ["agent"],
+  ]
+
+  [ui.sidebar.spaces]
+  row_gap = 0
+  rows = [
+    ["state_icon", "workspace"],
+    ["branch", "git_status"],
+  ]
+  ```
+
+  Tokens for agent rows include `state_icon`, `state_text`, `machine`, `workspace`, `tab`, `pane`, `agent`, `terminal_title`, `terminal_title_stripped`, and custom `$name` tokens. Space rows support `state_icon`, `state_text`, `workspace`, `branch`, `git_status`, and custom `$name` tokens.
+</Accordion>
+
+## Notifications
+
+```toml
+[ui.toast]
+delivery = "herdr"
+delay_seconds = 1
+
+[ui.toast.herdr]
+position = "bottom-right"
+```
+
+Choose `"herdr"` for an in-app toast, `"terminal"` for an outer-terminal notification that works over SSH, `"system"` for the local OS notification service, or `"off"` to disable popups. Herdr suppresses popups for the active tab.
+
+<Tip>
+  On macOS, `"system"` tries `terminal-notifier` first and falls back to `/usr/bin/osascript`. Install `terminal-notifier` with `brew install terminal-notifier` for a better notification experience.
+</Tip>
+
+## Sound
+
+```toml
+[ui.sound]
+path = "sounds/notification.mp3"
+done_path = "sounds/done.mp3"
+request_path = "sounds/request.mp3"
+```
+
+Custom sounds must be MP3 files. Herdr resolves relative paths from the config file's directory. Mute or enable sounds per-agent:
+
+```toml
+[ui.sound.agents]
+droid = "off"
+claude = "on"
+```
+
+## Agent Session Restore
+
+Herdr resumes supported agent conversations after a server restart by default:
+
+```toml
+[session]
+resume_agents_on_restore = true
+startup_per_agent_delay_ms = 100
+```
+
+Automatic restores start one agent at a time, 100 ms apart by default, to reduce startup contention. See [Session State](/session-state) for supported agents and full persistence behavior.
+
+## Environment Variables
+
+| Variable | Purpose |
+| --- | --- |
+| `HERDR_CONFIG_PATH` | Override the config file path. |
+| `HERDR_SESSION` | Select a named session for CLI commands. |
+| `HERDR_SOCKET_PATH` | Low-level socket path override. |
+| `HERDR_PROCESS_DETECTION` | Linux process detection strategy: `native` (default) or `child-groups`. |
+| `HERDR_LOG` | Set log filtering, e.g. `HERDR_LOG=herdr=debug`. |
+| `HERDR_DISABLE_SOUND` | Disable sound playback even when `[ui.sound] enabled = true`. |
+
+## Log Files
+
+```text
+~/.config/herdr/herdr.log
+~/.config/herdr/herdr-client.log
+~/.config/herdr/herdr-server.log
+```
+
+Logs rotate automatically. Include the current log and rotated siblings when reporting issues.

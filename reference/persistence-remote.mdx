@@ -1,0 +1,175 @@
+---
+title: "Remote Persistence and Session Restore in Herdr"
+sidebarTitle: "Persistence"
+description: "Learn what Herdr saves across restarts, how agent sessions resume automatically, where session.json lives, and how remote reconnects restore your workspace."
+---
+
+Herdr keeps panes running in a background server. When you detach, the server stays alive and your processes keep running. When the server itself stops and restarts — after a reboot, an explicit `herdr server stop`, or a remote reconnect — Herdr restores the saved session shape from disk and, where supported, resumes agent conversations automatically. Understanding what survives each scenario helps you choose the right workflow for local development, remote servers, and AI agent orchestration.
+
+## What Herdr persists across a restart
+
+When the server stops and starts again, the original pane processes are gone. Herdr restores state from the saved session file on disk.
+
+| What is saved | Survives detach | Survives server restart |
+| --- | --- | --- |
+| Workspace / tab / pane layout | Yes | Yes |
+| Working directory per pane | Yes | Yes |
+| Agent session references (for resume) | Yes | Yes |
+| Live PTY processes and shells | Yes | No |
+| Scrollback / terminal screen contents | Yes (live) | Only with pane screen history enabled |
+| In-flight CLI requests and subscriptions | Yes | No |
+
+<Note>
+Snapshot restore recreates the layout but does not restore running shells, servers, tests, or arbitrary processes. Panes that cannot use a stronger restore path come back as new shells in their saved directories.
+</Note>
+
+## What Herdr does NOT persist
+
+- **Live PTYs:** After a full server stop, the original process tree is gone. New shells are started in the saved working directory.
+- **Scrollback buffer:** Terminal screen contents are not stored by default. Recent output is only available after restart if `[experimental] pane_history = true` is enabled (see below).
+- **In-flight coordination:** Active CLI or API requests, waits, subscription streams, client sockets, and pane-to-pane messages are interrupted on restart. Clients should reconnect and retry them.
+
+## The session.json file and named session storage
+
+The saved session layout is written to `session.json` in the session directory. For the default session this is inside `~/.config/herdr/`. Named sessions each get their own directory:
+
+```text
+~/.config/herdr/sessions/<name>/session.json
+```
+
+This file contains workspaces, tabs, panes, saved working directories, layout, focus state, and agent session references. It does not contain passwords, private keys, or pane screen contents.
+
+Herdr retains up to 48 layout snapshots in `session-snapshots/` beside `session.json`, written at most once every 15 minutes. The first saved layout is copied immediately. If `session.json` cannot be read or parsed, the original bytes are preserved in `session-backups/` and the failure is logged under `persist.backup`.
+
+<Tip>
+To recover an older layout: stop the server, copy the chosen file from `session-snapshots/` over `session.json` (use file modification times to identify when each snapshot was taken), then restart.
+</Tip>
+
+## How agent resume works
+
+Some agents can resume their own conversation sessions after a Herdr server restart. Herdr uses session references reported by official integrations to restart those agent panes automatically.
+
+When an agent pane reports a native session reference, Herdr stores it in `session.json` alongside the pane layout. On restore, Herdr launches the agent with its recorded resume command instead of a plain shell.
+
+### resume_argv and pane.report_agent_session
+
+Agents report their resumable session to Herdr through the official integration protocol (`pane.report_agent_session`). Herdr then stores the resume command arguments (`resume_argv`) in the session snapshot. On the next restore, Herdr invokes those arguments to hand the agent back into its previous conversation.
+
+### Supported agents and their resume commands
+
+Native agent session restore is **enabled by default**. Disable it with:
+
+```toml
+[session]
+resume_agents_on_restore = false
+```
+
+After a client attaches and provides terminal size and theme context, Herdr resumes eligible agent panes across all workspaces and tabs without waiting for each pane to be focused.
+
+The following integrations support native session restore:
+
+| Agent | Minimum integration version | Resume command |
+| --- | --- | --- |
+| Pi | `2` | `pi --session <path-or-id>` |
+| Antigravity CLI | `1` | `agy --conversation <id>` |
+| OMP | `3` | `omp --resume=<path-or-id>` |
+| Claude Code | `6` | `claude --resume <id>` |
+| Codex | `5` | `codex resume <id>` |
+| Cursor Agent CLI | `1` | `cursor-agent --resume <id>` |
+| Grok CLI | `2` | `grok --resume <id>` |
+| GitHub Copilot CLI | `2` | `copilot --resume=<id>` |
+| Devin CLI | `2` | `devin --resume <id>` |
+| Droid | `2` | `droid --resume <id>` |
+| Kimi Code CLI | `3` | `kimi --session <id>` |
+| Qoder CLI | `2` | `qodercli --resume <id>` |
+| Qwen Code | `1` | `qwen --resume <id>` |
+| Letta Code | `1` | `letta --conversation <id>` |
+| OpenCode | `5` | `opencode --session <id>` |
+| Kilo Code CLI | `1` | `kilo --session <id>` |
+| Hermes Agent | `2` | `hermes --resume <id>` |
+| MastraCode | `1` | `mastracode --thread <id>` |
+
+Check installed integration versions with:
+
+```bash
+herdr integration status
+```
+
+Reinstall an outdated integration:
+
+```bash
+herdr integration install <agent>
+```
+
+Unsupported, missing, invalid, duplicated, or stale session references restore as normal shells in the saved pane directory.
+
+## Restoring a session on a remote machine after reconnect
+
+When you reconnect to a remote machine after a network drop, sleep, or restart, Herdr restores the last saved session shape automatically. The remote Herdr server owns the panes; your local client draws the UI.
+
+For remote attach:
+
+```bash
+herdr --remote workbox
+```
+
+For a named session on the remote host:
+
+```bash
+herdr --remote workbox --session agents
+```
+
+If the remote server was also restarted (not just disconnected), Herdr performs a snapshot restore: workspaces, tabs, panes, and working directories come back, and supported agent panes resume their conversations. Live PTYs that were running before the restart are gone and replaced by fresh shells or resumed agents.
+
+<Note>
+A version difference alone does not replace or restart a running remote server. Herdr only asks before stopping a server that lacks required compatibility or detached-daemon support. The default answer is No; stopping the server ends its pane processes.
+</Note>
+
+## Pane screen history replay (scrollback after restart)
+
+Pane screen history restores recent terminal contents after a full server restart, without restoring the old process. It is **off by default** because pane output can include secrets, tokens, prompts, and command output.
+
+Enable it in the config file:
+
+```toml
+[experimental]
+pane_history = true
+```
+
+When enabled, saved pane history is written to `session-history.json` next to `session.json`. History is only replayed when it matches the exact saved layout. If native agent session restore applies to a pane, the agent is resumed instead of replaying saved history for that pane.
+
+<Warning>
+Treat the Herdr config and session directory like terminal history — it may contain sensitive output. Keep its permissions restricted.
+</Warning>
+
+## Logind delay inhibitor on Linux (shutdown save)
+
+On Linux systems with systemd-logind, Herdr listens for the host shutdown warning and requests a short delay to finish saving and stopping cleanly before logind proceeds. This ensures the session snapshot is up to date when the machine powers off.
+
+The operating system limits the delay. Herdr does not block shutdown indefinitely. This protection is unavailable without logind and does not cover forced shutdown, power loss, or processes killed before the warning arrives.
+
+## Headless server size for remote orchestration
+
+When running Herdr headlessly (no attached client) on a remote server for AI agent orchestration, pane size defaults to the server's configured or fallback dimensions. There is no terminal to negotiate size with until a client attaches.
+
+After a client attaches and provides terminal size and theme context, Herdr resumes eligible agent panes across workspaces and tabs. This means agents started headlessly adopt their correct display dimensions once the first client connects, without requiring manual pane resizing.
+
+For automated remote workflows where no interactive client ever attaches, set explicit dimensions in your config to control how agents see their terminal:
+
+```toml
+[ui]
+# Set a stable headless size for agent panes
+default_cols = 220
+default_rows = 50
+```
+
+## Summary: what survives each operation
+
+| Operation | Processes keep running | Layout returns | Scrollback returns | Agent conversation resumes |
+| --- | --- | --- | --- | --- |
+| Detach and reattach | Yes | Yes | Yes, from the live terminal | Yes — process never stopped |
+| Server restart | No | Yes | Only with `pane_history = true` | Yes, with native agent session restore |
+| Update without `--handoff` | Compatible servers keep running | Yes after restart | Only with `pane_history = true` | Yes, with native agent session restore |
+| Update with `--handoff` | Best effort for supported servers | Yes | Yes, if handoff succeeds | Yes, if handoff succeeds |
+| Remote reconnect (server still running) | Yes | Yes | Yes, from the live terminal | Yes — process never stopped |
+| Remote reconnect (server restarted) | No | Yes | Only with `pane_history = true` | Yes, with native agent session restore |

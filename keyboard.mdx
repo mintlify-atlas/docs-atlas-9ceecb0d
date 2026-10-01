@@ -1,0 +1,188 @@
+---
+title: "Herdr Keyboard Bindings, Prefix Mode, and Copy Mode"
+sidebarTitle: "Keyboard"
+description: "Learn what prefix mode is, master the default bindings, navigate copy mode and text fields, and configure prefix-free chords for faster workflow."
+---
+
+Herdr is mouse-native. You can click panes, tabs, workspaces, and agents, drag split borders, and use right-click menus without learning a single keybinding. Keyboard control is entirely optional — but once you know the prefix model, most actions are one or two keystrokes away.
+
+## What the Prefix Is
+
+A terminal multiplexer sits between your terminal and the programs running inside it. Those programs already use most key combinations: `ctrl+c` interrupts, `ctrl+r` searches history, editors claim nearly everything else. If Herdr grabbed common keys directly, it would break the programs inside it.
+
+The prefix solves this. Press the prefix key — default `ctrl+b` — and the next keypress goes to Herdr instead of your terminal. `prefix+c` means: press `ctrl+b`, release, then press `c`. Herdr reserves one key instead of dozens.
+
+<Tip>
+  Press `prefix+?` at any time to see every active binding. Press `/` in the keybind help to filter actions and shortcuts; use `Backspace` to edit the filter or `ctrl+u` to clear it.
+</Tip>
+
+<Note>
+  Coming from tmux or Zellij? You already know this model. The default prefix is the same `ctrl+b` as tmux, and the binding syntax will feel familiar.
+</Note>
+
+## Learn These Five First
+
+These cover most daily movement. Everything else can stay on the mouse.
+
+| Action | Key |
+| --- | --- |
+| New tab | `prefix+c` |
+| Split right / down | `prefix+v` / `prefix+minus` |
+| Move between panes | `prefix+h/j/k/l` |
+| Workspace navigation | `prefix+w` |
+| Detach, leave everything running | `prefix+q` |
+
+## All Default Bindings
+
+<Accordion title="Pane bindings">
+  | Action | Key |
+  | --- | --- |
+  | Zoom the focused pane | `prefix+z` |
+  | Close pane | `prefix+x` |
+  | Swap panes | `prefix+shift+h/j/k/l` |
+  | Resize mode | `prefix+r` |
+  | Copy mode | `prefix+[` |
+</Accordion>
+
+<Accordion title="Tab bindings">
+  | Action | Key |
+  | --- | --- |
+  | New tab | `prefix+c` |
+  | Next / previous tab | `prefix+n` / `prefix+p` |
+  | Jump to tab 1–9 | `prefix+1..9` |
+  | Rename tab | `prefix+shift+t` |
+  | Close tab | `prefix+shift+x` |
+</Accordion>
+
+<Accordion title="Workspace and session bindings">
+  | Action | Key |
+  | --- | --- |
+  | New workspace | `prefix+shift+n` |
+  | Rename workspace | `prefix+shift+w` |
+  | Close workspace | `prefix+shift+d` |
+  | Goto picker | `prefix+g` |
+  | Toggle sidebar | `prefix+b` |
+  | Detach client | `prefix+q` |
+  | Show keybind help | `prefix+?` |
+</Accordion>
+
+## Navigate Mode and the Goto Picker
+
+Press `prefix+g` to open the Goto picker. It lists each agent or terminal on its own row, grouped by workspace. Split tabs never hide their panes behind another row.
+
+- Click a row or press `Enter` to jump directly to it.
+- Press `/` to search by name, agent kind, tab, workspace, branch, or path.
+- Use `Up/Down` or `j/k` to move between rows when not typing a search.
+- `Left/Right` jumps to the first agent or terminal in the previous/next workspace section, without wrapping.
+- While editing a search, `Left/Right` moves the text cursor instead.
+- Outside search mode, `b/w/i/d` filter blocked, working, idle, or done agents; `a` shows all terminals again.
+- The selected destination's location and path appear below the list.
+- When the list overflows, use the mouse wheel, click the scrollbar track, or drag its thumb to scroll.
+
+## Copy Mode
+
+Press `prefix+[` to enter copy mode for the focused pane.
+
+<Steps>
+  <Step title="Enter copy mode">
+    Press `prefix+[`. The pane keeps its live output — copy mode does not pause the running process.
+  </Step>
+  <Step title="Navigate history">
+    Use `h/j/k/l`, tmux-style `w/b/e` and big-word `W/B/E`, `{`/`}`, `PageUp`/`PageDown`, `ctrl+b`/`ctrl+f`, and `ctrl+u`/`ctrl+d` to move through history.
+  </Step>
+  <Step title="Search">
+    Press `/` or `?` for forward or backward literal search, then `n` or `N` to repeat in the same or opposite direction. Search is case-insensitive unless the query contains an uppercase letter.
+  </Step>
+  <Step title="Select and copy">
+    Use `v` or `Space` to start a selection, then `y` or `Enter` to copy it.
+  </Step>
+  <Step title="Exit">
+    Press `q` or `Esc` to leave without copying. `Esc` clears an active selection or search before exiting.
+  </Step>
+</Steps>
+
+<Note>
+  With the default prefix, `ctrl+b` enters prefix mode instead of paging up in copy mode. Use a different prefix if you want `ctrl+b` for copy-mode page-up. Mouse drag-select copies without entering copy mode at all.
+</Note>
+
+## Editing Text Fields
+
+Herdr's naming dialogs, worktree branch fields, filters, and copy-mode search support editing at the cursor. These shortcuts apply to Herdr-owned fields, not to the shell or agent inside a pane.
+
+| Action | Keys |
+| --- | --- |
+| Move one character | `Left` / `Right`, `Ctrl+B` / `Ctrl+F` |
+| Move to beginning / end | `Home` / `End`, `Ctrl+A` / `Ctrl+E` |
+| Move one word | `Alt+B` / `Alt+F` |
+| Delete previous character | `Backspace`, `Ctrl+H` |
+| Delete next character | `Delete`, `Ctrl+D` |
+| Cut to beginning / end | `Ctrl+U` / `Ctrl+K` |
+| Cut previous word | `Ctrl+W`, `Alt+Backspace`, `Ctrl+Backspace` |
+| Cut next word | `Alt+D` |
+| Insert last cut text | `Ctrl+Y` |
+
+Typing and paste insert at the cursor. Movement and deletion respect Unicode grapheme boundaries, and long values scroll horizontally. Cut text stays within the current field and does not use the system clipboard.
+
+## Customizing the Prefix
+
+Change the prefix to any key:
+
+```toml
+[keys]
+prefix = "ctrl+a"
+```
+
+Use an array to accept more than one prefix — useful when sharing one config across macOS and Linux:
+
+```toml
+[keys]
+prefix = ["ctrl+space", "ctrl+s"]
+```
+
+Every configured prefix enters the same prefix mode and starts every `prefix+...` action. The first entry is the primary prefix shown in the status bar; the in-app help panel at `prefix+?` lists all of them.
+
+## Going Prefix-Free
+
+You can bind Herdr actions to direct chords that need no prefix at all. The challenge is picking chords that survive three layers: your operating system, your outer terminal (Ghostty, iTerm2, and others ship their own defaults), and the programs running inside the pane.
+
+The `ctrl+alt` family is almost untouched everywhere. Terminals leave it free, it is not affected by macOS option-key composing behavior that blocks plain `alt` chords, and it transmits even in terminals without a modern keyboard protocol.
+
+This setup keeps prefix bindings and adds direct chords on top:
+
+```toml
+[keys]
+focus_pane_left  = ["prefix+h", "ctrl+alt+h"]
+focus_pane_down  = ["prefix+j", "ctrl+alt+j"]
+focus_pane_up    = ["prefix+k", "ctrl+alt+k"]
+focus_pane_right = ["prefix+l", "ctrl+alt+l"]
+previous_tab     = ["prefix+p", "ctrl+alt+["]
+next_tab         = ["prefix+n", "ctrl+alt+]"]
+new_tab          = ["prefix+c", "ctrl+alt+c"]
+split_vertical   = ["prefix+v", "ctrl+alt+d"]
+split_horizontal = ["prefix+minus", "ctrl+alt+shift+d"]
+zoom             = ["prefix+z", "ctrl+alt+z"]
+```
+
+<Warning>
+  Some `ctrl+alt` chords are already claimed. Avoid these:
+
+  | Chord | Owned by |
+  | --- | --- |
+  | `ctrl+alt+arrows` | GNOME workspace switching, Ghostty and Konsole defaults |
+  | `ctrl+alt+t` | "Launch terminal" on Ubuntu and Fedora |
+  | `ctrl+alt+l` / `ctrl+alt+a` | KDE lock screen / attention window |
+  | `ctrl+alt+s` / `ctrl+alt+u` | Konsole |
+  | `ctrl+alt+f1..f12` | Linux virtual console switching |
+
+  If a direct chord does nothing, your terminal or desktop environment consumed it before Herdr could see it. Rebind either side: free the chord in the terminal's settings, or pick another chord in Herdr.
+</Warning>
+
+## Resetting to Default Bindings
+
+If you have old custom keybindings and want the new defaults, run:
+
+```bash
+herdr config reset-keys
+```
+
+Herdr backs up `config.toml`, removes `[keys]` and `[[keys.command]]`, and uses built-in v2 defaults after the next restart or `herdr server reload-config`.

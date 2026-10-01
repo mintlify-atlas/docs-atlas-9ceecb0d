@@ -1,0 +1,101 @@
+---
+title: "Herdr Plugin Marketplace: Discover and Share Plugins"
+sidebarTitle: "Marketplace"
+description: "Browse community Herdr plugins at herdr.dev/plugins, install any plugin straight from GitHub, and publish your own plugin by adding a GitHub topic."
+---
+
+The Herdr plugin marketplace is an automatic index of community-built plugins hosted on GitHub. Browse it at [herdr.dev/plugins](/plugins/) to discover workflows built by other Herdr users, then install any plugin with a single command. The index is not a reviewed catalog — it surfaces every public repository that opts in, so the same [trust guidance](/plugins#trust-and-security) that applies to installing any plugin applies here.
+
+## Browsing the Marketplace
+
+The [marketplace](/plugins/) lists public GitHub repositories tagged with the topic `herdr-plugin` when their default branch contains at least one `herdr-plugin.toml` whose required metadata can be parsed.
+
+<CardGroup cols={2}>
+  <Card title="Search and sort" icon="magnifying-glass">
+    Search by repository or plugin metadata, and sort cards by popularity, recent activity, or newest.
+  </Card>
+  <Card title="One card, many plugins" icon="rectangles-mixed">
+    Each repository card lists every valid plugin manifest discovered inside it as a separately installable plugin.
+  </Card>
+</CardGroup>
+
+Each card shows the repository name and owner, its description, star count, primary language, and last-push time. Plugin rows within the card show each manifest's `name` and `version` and link to the exact source directory.
+
+<Note>
+Discovery is automatic and unreviewed. A listing means a repository tagged itself with `herdr-plugin`, not that Herdr vetted it. Review a plugin's manifest and commands before installing.
+</Note>
+
+## Installing a Plugin from GitHub
+
+The marketplace helps you discover plugins. Install any plugin directly from GitHub using the owner/repo shorthand:
+
+```bash
+herdr plugin install owner/repo[/subdir...]
+```
+
+The command works with any public GitHub repository that has a `herdr-plugin.toml` manifest at its root or in a subdirectory. For example:
+
+```bash
+herdr plugin install ogulcancelik/herdr-plugin-examples/agent-telegram-notify
+```
+
+<Steps>
+  <Step title="Preview">
+    In an interactive terminal, `herdr plugin install` shows a preview of the source and the commands that will run. Review the manifest and scripts before confirming.
+  </Step>
+  <Step title="Confirm or skip review">
+    Use `--yes` to skip the interactive preview for sources you already trust:
+
+    ```bash
+    herdr plugin install owner/repo --yes
+    ```
+  </Step>
+  <Step title="Pin a specific revision">
+    Use `--ref` to pin to a specific Git ref or commit so the plugin never changes without your intent:
+
+    ```bash
+    herdr plugin install owner/repo --ref abc1234
+    ```
+  </Step>
+</Steps>
+
+## Updating an Installed Plugin
+
+There is no separate `plugin update` command in v1. To refresh a GitHub-managed plugin, reinstall it — this replaces the managed checkout while leaving your plugin config and state in place:
+
+```bash
+herdr plugin install owner/repo
+```
+
+## Viewing Installed Plugins
+
+List all registered plugins and their enabled state at any time:
+
+```bash
+herdr plugin list
+```
+
+Installed and linked plugins are global to the current user and available in every Herdr session.
+
+## Publishing Your Plugin
+
+Getting your plugin listed in the marketplace is straightforward:
+
+<Steps>
+  <Step title="Add the GitHub topic">
+    Add `herdr-plugin` as a topic to your public GitHub repository.
+  </Step>
+  <Step title="Place your manifest">
+    Commit a `herdr-plugin.toml` manifest with valid required metadata (`id`, `name`, `version`, `min_herdr_version`) to the repository's default branch. Manifests may be at the root or in subdirectories — one repository can contain multiple separately installable plugins.
+  </Step>
+  <Step title="Wait for indexing">
+    The marketplace index refreshes automatically every 30 minutes and rescans repositories when their default-branch head changes. Forks, archived repositories, and repositories with malformed required metadata are excluded.
+  </Step>
+  <Step title="Share the install command">
+    Once listed, share `herdr plugin install owner/repo[/subdir]` with your users so they can install directly from GitHub.
+  </Step>
+</Steps>
+
+<Tip>
+See the [Plugins authoring guide](/plugins) for the full `herdr-plugin.toml` manifest reference, build commands, startup hooks, pane placements, event hooks, and all other plugin capabilities.
+</Tip>

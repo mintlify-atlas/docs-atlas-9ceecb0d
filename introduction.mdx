@@ -1,0 +1,71 @@
+---
+title: "Herdr: A Terminal Workspace Manager for Coding Agents"
+sidebarTitle: "Introduction"
+description: "Herdr keeps terminals and coding agents alive in a persistent background server — detach, reconnect, and track every agent's state from one window."
+---
+
+Herdr is a terminal workspace manager and runtime built for AI coding agents. It runs as a single Rust binary inside whatever terminal you already use — no Electron, no wrappers — and keeps every pane, tab, and agent alive in a background server so you can close the client, lose an SSH connection, or switch machines without stopping any work.
+
+## What Herdr does
+
+Herdr sits between you and your coding agents. It owns the terminals your agents run in, tracks whether each one is working or blocked, and lets you walk away while work continues. When you return — from the same machine, a phone, or a remote shell — you reattach to the exact state you left.
+
+### Key value propositions
+
+**Persistent sessions — detach without stopping work**
+Herdr keeps terminals running in a background server when you close the client or lose your SSH connection. After a server or machine restart, Herdr restores the saved layout and can resume supported agent sessions; the original processes do not survive.
+
+**Agent state tracking — never hunt for the stuck one**
+Every pane is marked `working`, `blocked`, `done`, or `idle`. When an agent stops and needs an answer, Herdr says so. The sidebar rolls up status from every agent across all workspaces so you always know which project needs attention.
+
+**Multi-machine — several machines, one window**
+Keep local work and saved SSH machines together, with a combined agent list and independent reconnects. You do not need separate terminal windows for each host.
+
+**Socket API and CLI — agent-native by design**
+Agents drive Herdr through the CLI and socket API: they can spawn panes, prompt each other, and wait until another agent is genuinely blocked. This makes Herdr a coordination layer, not just a terminal multiplexer.
+
+**Plugins — extend panes and workflows**
+Herdr exposes a plugin system that extends panes and workflows beyond built-in behavior. Browse available plugins at [herdr.dev/plugins](https://herdr.dev/plugins/).
+
+**Keyboard and mouse, both first-class**
+tmux-style prefix keys and click, drag, and split — pick whichever you want, per moment, not per tool.
+
+**Runs what you already run**
+Claude Code, Codex, Cursor, opencode, Grok, and the rest. Herdr does not wrap or replace them; it owns their terminals.
+
+## Explore the docs
+
+<CardGroup cols={2}>
+  <Card icon="download" href="/install" title="Install Herdr">
+    curl installer, Homebrew, mise, Nix flake, and manual binary download for Linux, macOS, and Windows.
+  </Card>
+  <Card icon="rocket" href="/quickstart" title="Quickstart">
+    Launch Herdr, run your first agent, detach and reattach — up and running in under five minutes.
+  </Card>
+  <Card icon="robot" href="https://herdr.dev/docs/agents/" title="Supported Agents">
+    Claude Code, Codex, opencode, and every other agent Herdr detects and tracks automatically.
+  </Card>
+  <Card icon="terminal" href="https://herdr.dev/docs/socket-api/" title="CLI & Socket API Reference">
+    Full reference for the Herdr CLI and the socket API used by agents to drive workspaces programmatically.
+  </Card>
+</CardGroup>
+
+## How the pieces fit together
+
+Herdr organises work into **sessions → workspaces → tabs → panes**. A session is a persistent server namespace. Each workspace maps to a project or repo. Tabs inside a workspace separate views like `agents`, `logs`, and `review`. Panes are real terminal processes that survive client detach.
+
+Agents run inside panes. Herdr detects them from foreground processes, screen manifests, and optional integrations, then surfaces their state in the sidebar and via the API. See [Concepts](/concepts) for the full model.
+
+## Quick install
+
+```bash
+curl -fsSL https://herdr.dev/install.sh | sh
+```
+
+Then start it where your work lives:
+
+```bash
+herdr
+```
+
+Run your agents, split panes, walk away. `ctrl+b q` detaches; `herdr` reattaches. See [Install](/install) for all platforms and package managers.

@@ -1,0 +1,120 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Herdr",
+  "projectDescription": "A terminal workspace manager and runtime for AI coding agents that keeps terminals persistent, tracks agent state, and exposes a full CLI and socket API for orchestration.",
+  "theme": "aspen",
+  "primaryColor": "#eae8ee",
+  "lightColor": "#17171a",
+  "darkColor": "#7c7c7d",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "install",
+              "quickstart",
+              "concepts"
+            ]
+          },
+          {
+            "group": "Using Herdr",
+            "pages": [
+              "how-to-work",
+              "keyboard",
+              "configuration",
+              "session-state",
+              "connecting-machines",
+              "windows"
+            ]
+          },
+          {
+            "group": "Agents",
+            "pages": [
+              "agents",
+              "agent-automation",
+              "agent-skill",
+              "integrations",
+              "add-herdr-support"
+            ]
+          },
+          {
+            "group": "Plugins",
+            "pages": [
+              "plugins",
+              "marketplace"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
+          {
+            "group": "CLI Reference",
+            "pages": [
+              "reference/cli",
+              "reference/config"
+            ]
+          },
+          {
+            "group": "Socket API",
+            "pages": [
+              "reference/socket-api",
+              "reference/socket-events",
+              "reference/socket-methods"
+            ]
+          },
+          {
+            "group": "Troubleshooting",
+            "pages": [
+              "reference/troubleshooting",
+              "reference/persistence-remote"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Persistent terminal sessions — agents keep running when you close your client or lose SSH",
+    "Real-time agent state tracking (working / blocked / done / idle) with sidebar rollups",
+    "Multi-machine support — local and SSH machines in a single combined workspace view",
+    "Full CLI and JSON socket API for scripting, automation, and agent orchestration",
+    "Plugin system with manifest-declared actions, event hooks, and terminal panes",
+    "Git worktree integration — checkout branches as Herdr workspaces",
+    "Mouse-native UI with keyboard prefix bindings (tmux-style) as an optional layer",
+    "Single Rust binary with no Electron — runs in any terminal",
+    "Detachable client/server model — detach and reattach without stopping work",
+    "Agent skill file for coding agents to control Herdr from inside a pane"
+  ],
+  "publicApiSurface": [
+    "herdr (launch / attach)",
+    "herdr server stop|reload-config|agent-manifests|reload-agent-manifests",
+    "herdr session list|attach|stop|delete",
+    "herdr workspace create|list|get|focus|rename|close|report-metadata",
+    "herdr worktree create|open|list|remove",
+    "herdr tab create|list|get|focus|rename|close",
+    "herdr pane split|list|get|focus|read|send|rename|close|report-agent|report-metadata|run",
+    "herdr agent list|get|wait|prompt|focus|rename|attach|start|explain",
+    "herdr notification show",
+    "herdr machine add|list|remove|enable|disable|rename|status|reconnect",
+    "herdr plugin install|link|unlink|enable|disable|list|action|log|pane",
+    "herdr integration install|uninstall",
+    "herdr api schema|snapshot",
+    "herdr completion zsh|bash|fish|powershell|elvish",
+    "herdr channel show|set",
+    "herdr update",
+    "Socket method: pane.report_agent",
+    "Socket method: pane.report_agent_session",
+    "Socket method: pane.report_metadata",
+    "Socket method: workspace.report_metadata",
+    "Socket method: agent.view.set|clear",
+    "Socket method: events.subscribe|wait",
+    "Socket method: layout.export|apply|set_split_ratio",
+    "Socket method: worktree.create|open|list|remove"
+  ]
+}

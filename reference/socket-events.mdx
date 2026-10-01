@@ -1,0 +1,431 @@
+---
+title: "Herdr Socket API: Event Subscriptions Reference"
+sidebarTitle: "Events"
+description: "Subscribe to workspace, tab, pane, layout, and worktree events over the Herdr socket — including filter shapes, push payloads, events_lost recovery, and the agent view API."
+---
+
+Herdr keeps the socket connection alive after a subscription is acknowledged and pushes event objects as they occur. This page covers the `events.subscribe` method, every subscribable event type with its payload, the `events_lost` error and recovery pattern, and the `agent.view` projection API for the Agents sidebar.
+
+## Subscribing to events
+
+Send a single `events.subscribe` request with a `subscriptions` array. Each entry is a filter object that declares which event type to receive and any narrowing fields. A single connection can hold multiple subscriptions.
+
+```json
+{
+  "id": "sub_1",
+  "method": "events.subscribe",
+  "params": {
+    "subscriptions": [
+      { "type": "pane.agent_status_changed", "pane_id": "w1:p1", "agent_status": "blocked" }
+    ]
+  }
+}
+```
+
+The first response acknowledges the subscription:
+
+```json
+{"id":"sub_1","result":{"type":"subscription_started"}}
+```
+
+Subsequent lines pushed on the same connection are event objects. All entries in the `subscriptions` array must be valid: if any referenced pane does not exist, Herdr rejects the entire request with an error and closes the connection. Refresh the pane list and retry rather than assuming the other entries were registered.
+
+Lifecycle subscriptions start when the request is accepted and **do not replay** events retained before that point.
+
+## Subscription filter shapes
+
+Each subscription entry uses a `type` field to select an event category. Additional fields narrow the subscription. Omitting optional fields subscribes to all instances of that event.
+
+### Workspace subscription filters
+
+| `type` | Optional filter fields |
+| --- | --- |
+| `workspace.created` | — |
+| `workspace.updated` | — |
+| `workspace.metadata_updated` | — |
+| `workspace.renamed` | `workspace_id`, `label` |
+| `workspace.moved` | `workspace_id` |
+| `workspace.reordered` | — |
+| `workspace.closed` | `workspace_id` |
+| `workspace.focused` | `workspace_id` |
+
+### Worktree subscription filters
+
+| `type` | Optional filter fields |
+| --- | --- |
+| `worktree.created` | — |
+| `worktree.opened` | — |
+| `worktree.removed` | — |
+
+### Tab subscription filters
+
+| `type` | Optional filter fields |
+| --- | --- |
+| `tab.created` | `workspace_id`, `tab_id` |
+| `tab.closed` | `tab_id` |
+| `tab.renamed` | `tab_id`, `label` |
+| `tab.moved` | `tab_id` |
+| `tab.focused` | `tab_id` |
+
+### Pane subscription filters
+
+| `type` | Optional filter fields |
+| --- | --- |
+| `pane.created` | `workspace_id`, `pane_id` |
+| `pane.updated` | — |
+| `pane.closed` | `pane_id` |
+| `pane.focused` | `pane_id` |
+| `pane.moved` | `pane_id` |
+| `pane.exited` | `pane_id` |
+| `pane.agent_detected` | `pane_id`, `agent` |
+| `pane.output_matched` | `pane_id`, `min_revision` |
+| `pane.agent_status_changed` | `pane_id` (required), `agent_status` (required) |
+| `pane.scroll_changed` | — |
+
+### Layout subscription filters
+
+| `type` | Optional filter fields |
+| --- | --- |
+| `layout.updated` | — |
+
+## Workspace events
+
+### `workspace.created`
+
+Emitted when a new workspace opens. Includes the full `WorkspaceInfo` record. When the workspace belongs to a worktree group, `workspace.worktree` provenance is included.
+
+```json
+{
+  "event": "workspace_created",
+  "data": {
+    "type": "workspace_created",
+    "workspace": {
+      "workspace_id": "w2",
+      "number": 2,
+      "label": "api",
+      "focused": false,
+      "pane_count": 1,
+      "tab_count": 1,
+      "active_tab_id": "w2:t1",
+      "agent_status": "unknown"
+    }
+  }
+}
+```
+
+### `workspace.updated`
+
+Emitted when a workspace record changes. Carries the full updated `WorkspaceInfo`.
+
+### `workspace.metadata_updated`
+
+Emitted when workspace token metadata changes or a token TTL expires. Carries the updated `WorkspaceInfo` with the latest `tokens` map. This event is available to API subscribers but does **not** invoke plugin event hooks.
+
+### `workspace.renamed`
+
+Carries `workspace_id` and the new `label`.
+
+### `workspace.moved`
+
+Carries the moved `workspace_id`, the requested `insert_index`, and the updated ordered `workspaces` list.
+
+### `workspace.reordered`
+
+Emitted by `workspace.move_block`. Carries the atomically moved `workspace_ids`, optional `before_workspace_id`, and the authoritative ordered `workspaces` list.
+
+### `workspace.closed`
+
+Carries the `workspace_id` and a final `workspace` snapshot when Herdr can still identify it before removal.
+
+### `workspace.focused`
+
+Carries the `workspace_id` of the newly focused workspace.
+
+## Worktree events
+
+### `worktree.created`
+
+Emitted when `worktree.create` succeeds. Carries the opened `workspace` and the created `worktree` record.
+
+```json
+{
+  "event": "worktree_created",
+  "data": {
+    "type": "worktree_created",
+    "workspace": { "workspace_id": "w3", "label": "worktree/api", "..." : "..." },
+    "worktree": {
+      "path": "/repo/.git/worktrees/api",
+      "label": "worktree/api",
+      "branch": "worktree/api",
+      "is_bare": false,
+      "is_detached": false,
+      "is_prunable": false,
+      "is_linked_worktree": true,
+      "open_workspace_id": "w3"
+    }
+  }
+}
+```
+
+### `worktree.opened`
+
+Carries the target `workspace`, the opened `worktree`, and the boolean `already_open` flag.
+
+### `worktree.removed`
+
+Carries `workspace_id`, the removed `worktree` record, and a boolean `forced` flag. When the linked workspace was still open, Herdr also emits `workspace.closed`.
+
+## Tab events
+
+### `tab.created`
+
+Carries the full `TabInfo` record including `tab_id`, `workspace_id`, `number`, `label`, `focused`, `pane_count`, and `agent_status`.
+
+### `tab.closed`
+
+Carries `tab_id` and `workspace_id`.
+
+### `tab.focused`
+
+Carries `tab_id` and `workspace_id`.
+
+### `tab.renamed`
+
+Carries `tab_id`, `workspace_id`, and the new `label`.
+
+### `tab.moved`
+
+Carries `tab_id`, `workspace_id`, the requested `insert_index`, and the updated ordered `tabs` list for that workspace.
+
+## Pane events
+
+### `pane.created`
+
+Carries the full `PaneInfo` record.
+
+### `pane.updated`
+
+Carries the full updated `PaneInfo`. Terminal-title changes can emit this event; spinner-only raw-title changes do not emit it when `terminal_title_stripped` is unchanged.
+
+### `pane.closed`
+
+Carries `pane_id` and `workspace_id`.
+
+### `pane.focused`
+
+Carries `pane_id` and `workspace_id`. Reports manual pane selection changes from any attached client. Selecting an already-selected pane does **not** emit it again.
+
+### `pane.moved`
+
+Carries `previous_pane_id`, `previous_workspace_id`, `previous_tab_id`, the updated `pane` record, and optional `created_workspace`, `created_tab`, `closed_tab_id`, and `closed_workspace_id` fields. Cross-workspace moves assign a new public pane ID; Herdr does not emit fake pane close/create events for the moved terminal process.
+
+### `pane.exited`
+
+Carries `pane_id` and `workspace_id`. Emitted when the pane's shell process exits.
+
+### `pane.agent_detected`
+
+Carries `pane_id`, `workspace_id`, optional `agent` name, optional `final_status`, and `released` boolean.
+
+```json
+{
+  "event": "pane_agent_detected",
+  "data": {
+    "type": "pane_agent_detected",
+    "pane_id": "w1:p1",
+    "workspace_id": "w1",
+    "agent": "claude",
+    "released": false
+  }
+}
+```
+
+### `pane.output_matched`
+
+Carries `pane_id`, `workspace_id`, and a `revision` counter for the pane's content. The subscription filter accepts an optional `min_revision` to suppress events below a known revision.
+
+### `pane.agent_status_changed`
+
+The most commonly used pane event. Carries `pane_id`, `workspace_id`, `agent_status`, optional `agent` name, optional `display_agent`, optional `title`, and `state_labels` map.
+
+```json
+{
+  "event": "pane_agent_status_changed",
+  "data": {
+    "type": "pane_agent_status_changed",
+    "pane_id": "w1:p1",
+    "workspace_id": "w1",
+    "agent_status": "blocked",
+    "agent": "claude",
+    "title": "Waiting for approval"
+  }
+}
+```
+
+Valid `agent_status` values: `idle`, `working`, `blocked`, `done`, `unknown`. `done` means idle and not yet seen.
+
+### `pane.scroll_changed`
+
+Scoped to one `pane_id`. Carries `pane_id`, `workspace_id`, and the current `scroll` metrics whenever Herdr observes a changed scroll snapshot.
+
+```json
+{
+  "event": "pane_scroll_changed",
+  "data": {
+    "pane_id": "w1:p1",
+    "workspace_id": "w1",
+    "scroll": {
+      "offset_from_bottom": 12,
+      "max_offset_from_bottom": 240,
+      "viewport_rows": 30
+    }
+  }
+}
+```
+
+Treat `offset_from_bottom == 0` as at-bottom state.
+
+## Layout events
+
+### `layout.updated`
+
+Carries the updated `PaneLayoutSnapshot` for one tab, including `workspace_id`, `tab_id`, `zoomed`, outer `area`, `focused_pane_id`, pane rects, and split rects/ratios. Clients maintaining a local cache should use this event to refresh the affected layout through an authoritative `pane.layout` read. A delayed payload may predate your latest snapshot, so always re-read rather than applying the event payload directly.
+
+```json
+{
+  "event": "layout_updated",
+  "data": {
+    "type": "layout_updated",
+    "layout": {
+      "workspace_id": "w1",
+      "tab_id": "w1:t1",
+      "zoomed": false,
+      "area": {"x": 0, "y": 0, "width": 220, "height": 50},
+      "focused_pane_id": "w1:p1",
+      "panes": [
+        {"pane_id": "w1:p1", "focused": true, "rect": {"x": 0, "y": 0, "width": 143, "height": 50}},
+        {"pane_id": "w1:p2", "focused": false, "rect": {"x": 143, "y": 0, "width": 77, "height": 50}}
+      ],
+      "splits": [
+        {"id": "s1", "direction": "right", "ratio": 0.65, "rect": {"x": 0, "y": 0, "width": 220, "height": 50}}
+      ]
+    }
+  }
+}
+```
+
+## `events_lost` handling and recovery
+
+Event history is not durable. If a subscriber falls behind the retained history — including while subscriptions are being initialized — the server sends an `events_lost` error on the original request `id` and then closes that subscription connection. Other clients remain connected.
+
+```json
+{"id":"sub_1","error":{"code":"events_lost","message":"subscriber fell behind retained history"}}
+```
+
+The history is shared across event types, so an overrun is reported even when the evicted events might not have matched your subscription's filters.
+
+### Recovery pattern
+
+Follow this sequence after receiving `events_lost`:
+
+1. **Open a new subscription** on a fresh connection.
+2. **Wait for `subscription_started`** on the new connection.
+3. **Begin reading** new events on the new connection, buffering them.
+4. **Call `session.snapshot`** on a separate connection to get current state.
+5. **Replace your cache** with the snapshot.
+6. **Treat buffered events** as invalidation signals that trigger authoritative reads — do not replay event payloads unconditionally onto the snapshot.
+7. **Serialize refreshes** and refresh again if events arrive while a read is in flight.
+
+Snapshots and events have no shared sequence boundary. Ordering is guaranteed within each subscription entry, not across entries or relative to a snapshot. Recovery restores current state, not the missing event history. Another `events_lost` requires repeating the pattern. Slow readers may need to increase read throughput or reduce event load.
+
+## Agent view projection
+
+`agent.view.set` installs a transient declarative projection for the built-in Agents sidebar. The projection is re-evaluated whenever agent facts or current UI context change. It controls the expanded and collapsed sidebar, mobile Agents list, mouse targets, indexed focus, and next/previous agent navigation. It does **not** change `agent.list`, notifications, detection, or global attention counts.
+
+### Setting a view
+
+```json
+{
+  "id": "view_set",
+  "method": "agent.view.set",
+  "params": {
+    "source": "plugin:example.agent-views",
+    "label": "focus",
+    "filter": {
+      "op": "any",
+      "filters": [
+        {
+          "op": "eq",
+          "field": "workspace_id",
+          "value": {"context": "current_workspace_id"}
+        },
+        {
+          "op": "in",
+          "field": "status",
+          "values": ["blocked", "done"]
+        }
+      ]
+    },
+    "sort": [
+      {"field": "attention", "order": "desc"},
+      {"field": "state_change_seq", "order": "desc"}
+    ]
+  }
+}
+```
+
+### Filter operators
+
+| `op` | Description |
+| --- | --- |
+| `all` | All child filters must match. |
+| `any` | At least one child filter must match. |
+| `not` | Negates a child filter. |
+| `eq` | Field equals a single value. |
+| `in` | Field matches any of a list of values. |
+| `exists` | Field is present. |
+
+### Built-in filter fields
+
+| Field | Type |
+| --- | --- |
+| `status` | `idle`, `working`, `blocked`, `done`, or `unknown` |
+| `workspace_id` | string or context object |
+| `tab_id` | string or context object |
+| `pane_id` | string |
+| `agent` | string |
+| `seen` | boolean |
+| `state_change_seq` | unsigned integer |
+
+Use `{"token": "name"}` as the `field` to filter on plugin-reported pane metadata tokens. Context values `current_workspace_id` and `current_tab_id` may only be compared to their matching ID field.
+
+### Sort fields
+
+| Field | Notes |
+| --- | --- |
+| `workspace_order` | Position in workspace list |
+| `tab_order` | Position in tab list |
+| `pane_order` | Position in pane list |
+| `attention` | Attention priority |
+| `status` | Agent status |
+| `agent` | Agent name |
+| `seen` | Seen state |
+| `state_change_seq` | Most recent state transition |
+| `{"token": "name"}` | Plugin-reported token value |
+
+Sorts are stable, evaluated in order, and accept `asc` or `desc`. Missing values sort after present values. When `sort` is omitted, the active `ui.agent_panel_sort` policy remains in effect.
+
+### Clearing a view
+
+Clear unconditionally or only when the named `source` still owns the view:
+
+```json
+{"id":"view_clear","method":"agent.view.clear","params":{}}
+{"id":"view_clear_owned","method":"agent.view.clear","params":{"source":"plugin:example.agent-views"}}
+```
+
+A source mismatch leaves the active view unchanged. The view lasts until it is cleared, replaced, its owning plugin is disabled or unlinked, or the server exits. Set and clear responses use `type: "agent_view"` and report `active`, `source`, and optional `label`.
+
+### `source` ownership
+
+`source` identifies the caller. Plugins must use `plugin:<HERDR_PLUGIN_ID>`; Herdr rejects plugin-owned sets when that plugin is missing or disabled. A successful set atomically replaces the previous view. Plugins that want durable behavior should save the query under `HERDR_PLUGIN_STATE_DIR` and reapply it from a `[[startup]]` hook.

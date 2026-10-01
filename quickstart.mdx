@@ -1,47 +1,116 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Quickstart: Run Your First Coding Agent with Herdr"
+sidebarTitle: "Quickstart"
+description: "Launch Herdr, open a workspace, start a coding agent, learn the keyboard prefix, then detach and reattach — all in under five minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
-
-## Prerequisites
-
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+Herdr launches or attaches to a persistent background session the moment you run it. Agents you start keep running even after you close the terminal window or lose an SSH connection. This guide walks you through the core workflow from a fresh install to a running agent you can safely walk away from.
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Install Herdr (if needed)">
+    If Herdr is not installed yet, run the one-line installer:
 
     ```bash
-    npm install your-package
+    curl -fsSL https://herdr.dev/install.sh | sh
     ```
+
+    See [Install](/install) for Windows, Homebrew, mise, and Nix options.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Start Herdr">
+    Navigate to your project directory, then launch Herdr:
 
     ```bash
-    your-cli init
+    herdr
     ```
+
+    Herdr launches or attaches to your default background session. You do not manage sockets. If you detach, agents keep running.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Create a workspace">
+    When a session has no workspaces, Herdr opens one automatically. A workspace is a project-level container for tabs, panes, and agents. Give each active project its own workspace to keep agent state readable in the sidebar.
+  </Step>
+
+  <Step title="Use the mouse">
+    Herdr is mouse-native, so start by clicking panes, tabs, workspaces, and agents to focus them. Drag split borders to resize. Right-click for context menus, including splitting panes and creating tabs.
+
+    Drag-select text to copy it to your clipboard. Double-click a token to select it, or hold the second press and drag to extend the selection by whole words. Both gestures copy when you release the mouse — copying does not require `Ctrl+C`.
+
+    <Tip>
+      Ctrl-click opens pane links when your terminal sends the modified click to Herdr. This works for OSC 8 hyperlinks and `http://` or `https://` URLs, including wrapped links whose beginning or end is outside the visible area.
+    </Tip>
+  </Step>
+
+  <Step title="Run an agent">
+    Start your coding agent in a pane:
 
     ```bash
-    your-cli start
+    claude
     ```
+
+    Or `codex`, `pi`, `opencode`, or any other [supported agent](https://herdr.dev/docs/agents/). Herdr detects it automatically. Across every workspace, the sidebar shows whether each agent is `working`, `blocked`, `done`, or `idle`, so you always know which project needs you.
+  </Step>
+
+  <Step title="Learn the keyboard prefix">
+    Keyboard control is optional — the mouse covers everything. Press `ctrl+b` to enter prefix mode, then press an action key.
+
+    Common actions:
+
+    | Action | Key |
+    | --- | --- |
+    | Split right | `prefix+v` |
+    | Split down | `prefix+minus` |
+    | New tab | `prefix+c` |
+    | Next / previous tab | `prefix+n` / `prefix+p` |
+    | Workspace navigation | `prefix+w` |
+    | New workspace | `prefix+shift+n` |
+    | Detach client | `prefix+q` |
+
+    Press `prefix+?` inside Herdr to see every active binding. Press `prefix+[` to enter copy mode and copy from the keyboard.
+
+    <Note>
+      If the prefix concept is new to you, see [Keyboard](https://herdr.dev/docs/keyboard/) for a full explanation of what it is, why multiplexers use one, and how to go prefix-free.
+    </Note>
+  </Step>
+
+  <Step title="Detach and come back">
+    Press `prefix+q` — or simply close your terminal window. The Herdr server and every agent keep running.
+
+    Run `herdr` again from any terminal to reattach to the same session:
+
+    ```bash
+    herdr
+    ```
+
+    You land back in the exact state you left.
+  </Step>
+
+  <Step title="Stop the server when you're done">
+    When you want to end the session and stop all pane processes:
+
+    ```bash
+    herdr server stop
+    ```
+
+    <Warning>
+      This stops the server and every process running inside it. Make sure agents have finished their work before stopping.
+    </Warning>
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Where next
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+<CardGroup cols={2}>
+  <Card icon="book" href="/concepts" title="Concepts">
+    The workspace, tab, pane, and agent model explained in full — including sessions, client/server architecture, and modes.
+  </Card>
+  <Card icon="laptop" href="https://herdr.dev/docs/how-to-work/" title="How to Work with Herdr">
+    Local, SSH, phone, and `herdr --remote` workflows for every situation.
+  </Card>
+  <Card icon="robot" href="https://herdr.dev/docs/agents/" title="Supported Agents">
+    Every agent Herdr detects, plus integrations that improve state accuracy.
+  </Card>
+  <Card icon="gear" href="https://herdr.dev/docs/configuration/" title="Configuration">
+    Keybindings, themes, notifications, mouse settings, and everything else.
+  </Card>
+</CardGroup>

@@ -1,0 +1,158 @@
+---
+title: "Herdr Workflows: Local, Remote, and Multi-Machine Work"
+sidebarTitle: "Workflows"
+description: "Run Herdr locally, attach to SSH remotes, manage multiple machines in one window, and stay connected from any device including phone or tablet."
+---
+
+Herdr separates the session server from the client so you can attach, detach, and re-attach from anywhere without losing running processes. Whether you are at your desk, working over SSH from a phone, or coordinating agents across several machines, you connect to the server where the work lives and leave it running between sessions.
+
+## Client/Server Architecture
+
+Herdr runs as a background server process that owns panes, shells, and agents. One or more clients attach to that server to render the UI and send input. When you detach, the server — and everything inside it — keeps running. Reattaching just sends you back to the live session.
+
+<CardGroup cols={2}>
+  <Card title="Local server" icon="computer">
+    Runs on your machine. Panes, agents, and processes live locally. Detach and reattach any time with `herdr`.
+  </Card>
+  <Card title="Remote server" icon="server">
+    Runs on a build box, cloud instance, or any machine you can SSH into. The server lives there; clients attach from wherever you are.
+  </Card>
+</CardGroup>
+
+## Local Work
+
+Working locally is the simplest path. Start Herdr from your project directory:
+
+```bash
+herdr
+```
+
+Herdr starts or attaches to your local background session automatically. You do not manage sockets. Run shells, servers, tests, and agents normally inside panes.
+
+When you are finished, detach the client with `ctrl+b q`. Your panes keep running. To reattach later, run `herdr` again from any directory.
+
+<Tip>
+  If you want to end the session and stop all panes, stop the server explicitly:
+
+  ```bash
+  herdr server stop
+  ```
+</Tip>
+
+## Remote Work Through Normal SSH
+
+SSH into the machine that has the code and credentials, then run Herdr there:
+
+```bash
+ssh you@server
+herdr
+```
+
+This works exactly like a terminal multiplexer. Your shell is remote, the Herdr server is remote, and agents and panes run on the remote machine. Detach with `ctrl+b q`, disconnect your SSH session, then SSH back and run `herdr` again to reattach to the same running session.
+
+Use this path when you already have an SSH shell open, when you are on a phone or tablet SSH client, or when you want the simplest possible remote setup.
+
+## Remote Attach From Your Local Terminal
+
+Attach through SSH without opening a shell first by using `--remote`:
+
+```bash
+herdr --remote workbox
+herdr --remote ssh://you@server:2222
+```
+
+The remote server keeps the panes running and streams their terminal content and session state over SSH. Your local Herdr draws the UI using your local theme and presentation settings.
+
+<Note>
+  `herdr --remote` differs from SSH-then-run: with `--remote`, the Herdr client runs on **your local machine**. That means local desktop features such as clipboard image paste can be bridged to the remote server. If you SSH first and run `herdr` on the server, Herdr runs entirely on that server and cannot access your local desktop clipboard.
+</Note>
+
+For repeat targets, add the host to your SSH config:
+
+```text
+Host workbox
+  HostName server.example.com
+  User you
+  Port 2222
+```
+
+Then attach with a short label:
+
+```bash
+herdr --remote workbox
+```
+
+## Work From Your Phone or Tablet
+
+Herdr works on your phone without a mobile app or web dashboard. Install any SSH client, connect to the machine where your agents run, and start Herdr there:
+
+```bash
+ssh you@server
+herdr
+```
+
+The same persistent Herdr session opens in your phone terminal. The TUI adapts to narrow screens, so you can inspect agents, switch workspaces, and check panes without leaving SSH.
+
+<Tip>
+  On iPhone, [Moshi](https://getmoshi.app/) works well as an SSH client for Herdr sessions.
+</Tip>
+
+## Named Sessions
+
+By default, Herdr uses a session named `default`. Named sessions let you keep separate contexts on the same machine — for example, one session per project or one for agents and one for interactive shells.
+
+Select a named session for CLI commands by setting the environment variable:
+
+```bash
+HERDR_SESSION=agents herdr
+```
+
+Pass `--remote-session <name>` when adding saved machines to target a specific session on the remote host:
+
+```bash
+herdr machine add workbox --remote-session agents
+```
+
+## Worktree Workflows
+
+Herdr integrates with Git worktrees so you can run separate agent sessions per branch without juggling directories manually. From the sidebar, use **New worktree** on a Git workspace row to create a checkout and open it as a new Herdr workspace grouped under the source.
+
+Set the root directory for worktree checkouts in your config:
+
+```toml
+[worktrees]
+directory = "~/.herdr/worktrees"
+```
+
+Herdr creates checkouts under `<directory>/<repo>/<branch-slug>`. For sibling-style checkouts alongside your main clone, set this to a path such as `~/Projects/herdr-worktrees`.
+
+<Accordion title="Worktree workspace behavior">
+  Grouped worktrees behave like normal Herdr workspaces: they can be focused, renamed, closed, and contain their own tabs and panes. The parent row is the original workspace. Closing the parent row closes the whole Herdr group, but it does not delete checkout folders or branches.
+
+  To delete a worktree checkout, use **Delete worktree checkout...** on a grouped child workspace. Herdr runs `git worktree remove`, asking Git to remove safely first. If Git refuses because the checkout has modified or untracked files, Herdr asks again before running a forced remove. Branches are not deleted.
+</Accordion>
+
+## Combined Agent List
+
+When you add saved SSH machines, all connected machines contribute to the unified agent list in the sidebar. Each machine runs its own Herdr server; losing the connection to one machine does not disconnect the others or interrupt the combined view.
+
+The agent list shows a `machine` token for each agent row when multiple machines are connected, so you can see at a glance where each piece of work is running and which agent needs a response.
+
+See [Connecting Machines](/connecting-machines) for full setup details.
+
+## Choosing the Right Path
+
+<Tabs>
+  <Tab title="Local work">
+    Run `herdr` from any directory. Herdr starts or reattaches to your local session. No extra flags needed.
+  </Tab>
+  <Tab title="SSH shell first">
+    `ssh you@server` then `herdr`. Use when you already live in an SSH shell, or when you are on a phone or tablet client. Herdr runs entirely on the remote machine.
+  </Tab>
+  <Tab title="Remote attach">
+    `herdr --remote <host>`. Use when you want a local UI attached to one remote session, including local clipboard image bridging. The client is local; the server and panes are remote.
+  </Tab>
+  <Tab title="Multi-machine">
+    Save machines with `herdr machine add <host> --label <label>`. Use when you want Local and several SSH machines in one window, with a combined agent list.
+  </Tab>
+</Tabs>

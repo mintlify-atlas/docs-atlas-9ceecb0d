@@ -1,0 +1,261 @@
+---
+title: "Herdr Integrations for Coding Agent Session Restore"
+sidebarTitle: "Integrations"
+description: "Install Herdr integrations for Claude Code, Codex, Copilot, Pi, OpenCode, Kimi, Grok, and more to resume agent sessions after a server restart."
+---
+
+Herdr detects the agents it supports automatically. Installing an agent's integration lets Herdr resume the same session after a server restart. Some integrations also report the agent's state directly, overriding screen detection entirely. See [Agents](/agents) for which agents Herdr supports and which support Herdr themselves.
+
+## Install Integrations
+
+Open settings inside Herdr and use the integrations tab to install recommended integrations for agents found on your `PATH`, or run commands manually:
+
+```bash
+herdr integration install pi
+herdr integration install omp
+herdr integration install claude
+herdr integration install codex
+herdr integration install copilot
+herdr integration install devin
+herdr integration install droid
+herdr integration install kimi
+herdr integration install opencode
+herdr integration install kilo
+herdr integration install hermes
+herdr integration install qodercli
+herdr integration install qwen
+herdr integration install letta
+herdr integration install cursor
+herdr integration install mastracode
+herdr integration install antigravity-cli
+herdr integration install grok
+```
+
+## Uninstall Integrations
+
+```bash
+herdr integration uninstall pi
+herdr integration uninstall omp
+herdr integration uninstall claude
+herdr integration uninstall codex
+herdr integration uninstall copilot
+herdr integration uninstall devin
+herdr integration uninstall droid
+herdr integration uninstall kimi
+herdr integration uninstall opencode
+herdr integration uninstall kilo
+herdr integration uninstall hermes
+herdr integration uninstall qodercli
+herdr integration uninstall qwen
+herdr integration uninstall letta
+herdr integration uninstall cursor
+herdr integration uninstall mastracode
+herdr integration uninstall antigravity-cli
+herdr integration uninstall grok
+```
+
+<Note>
+Herdr saves integration configs atomically on Linux/macOS. On Windows, existing files use a backup-first, in-place update. If Windows reports a backup, close the agent and inspect the config before retrying.
+</Note>
+
+## How Herdr Uses Integrations
+
+Every integration tells Herdr which session the agent is in, so Herdr can resume it after a server restart. Turn this off with `[session] resume_agents_on_restore = false`.
+
+The Pi, OMP, Kimi Code CLI, OpenCode, Kilo Code CLI, and MastraCode integrations also report the agent's state. While they report, Herdr uses them instead of reading the screen. Codex reports turn state when run with `--no-daemon`; screen detection still handles its visible blockers. Other integrations leave state to screen detection.
+
+Native session restore requires current Herdr integrations. Check installed versions with `herdr integration status`.
+
+## Per-Agent Integration Details
+
+<Steps>
+  <Step title="Pi">
+    ```bash
+    herdr integration install pi
+    ```
+
+    Herdr writes the bundled extension to `~/.pi/agent/extensions/herdr-agent-state.ts`. If `PI_CODING_AGENT_DIR` is set, Herdr writes to `$PI_CODING_AGENT_DIR/extensions/herdr-agent-state.ts` instead. Uninstall removes only that extension file.
+  </Step>
+
+  <Step title="OMP">
+    ```bash
+    herdr integration install omp
+    ```
+
+    Herdr writes the bundled extension to `~/.omp/agent/extensions/herdr-omp-agent-state.ts`. Herdr uses `PI_CODING_AGENT_DIR` as the complete agent directory when set. If Pi and OMP resolve to the same extension directory, Herdr refuses the OMP install — configure separate agent directories before installing both. The OMP integration reports `omp` as the agent label, lifecycle state, and native session identity.
+  </Step>
+
+  <Step title="Claude Code">
+    ```bash
+    herdr integration install claude
+    ```
+
+    The hook reports Claude Code session identity to the local Herdr socket on session start. Claude Code state comes from Herdr's screen manifest detection. Herdr uses `~/.claude` by default, or `CLAUDE_CONFIG_DIR` when set. The Claude config directory must already exist. Install writes `hooks/herdr-agent-state.sh` and updates `settings.json` with Herdr hook entries.
+  </Step>
+
+  <Step title="Codex">
+    ```bash
+    herdr integration install codex
+    ```
+
+    When Codex runs with `--no-daemon`, the hook reports session identity and turn start/stop state through Herdr's local socket API. Screen detection still handles visible blockers. Herdr uses `~/.codex` by default, or `CODEX_HOME` when set. Install writes `herdr-agent-state.sh`, updates `hooks.json`, and ensures `[features] hooks = true` in `config.toml`.
+  </Step>
+
+  <Step title="GitHub Copilot CLI">
+    ```bash
+    herdr integration install copilot
+    ```
+
+    The Copilot hook reports session identity through the same local socket API used by other integrations. Copilot state comes from Herdr's screen manifest detection. Herdr uses `~/.copilot` by default, or `COPILOT_HOME` when set. After Copilot emits a session-bearing event, Herdr resumes the pane with `copilot --resume=<id>`.
+  </Step>
+
+  <Step title="Devin CLI">
+    ```bash
+    herdr integration install devin
+    ```
+
+    The hook reports native session identity from Devin session, prompt, tool-use, permission, and stop events. Devin state still comes from Herdr's screen manifest and OSC detection. Herdr resumes stored Devin sessions with `devin --resume <id>`.
+  </Step>
+
+  <Step title="Droid">
+    ```bash
+    herdr integration install droid
+    ```
+
+    The Droid hook reports session identity through the same local socket API. Lifecycle state still comes from Herdr's screen manifest detection. Herdr uses `~/.factory` for Droid hooks. After Droid emits a session start event, Herdr resumes the pane with `droid --resume <id>`.
+  </Step>
+
+  <Step title="Kimi Code CLI">
+    ```bash
+    herdr integration install kimi
+    ```
+
+    The hook reports Kimi session identity and lifecycle state for native restore and authoritative `idle`, `working`, and `blocked` status. Requires Kimi Code CLI `0.14.0` or newer. Herdr uses `~/.kimi-code` by default, or `KIMI_CODE_HOME` when set. Herdr resumes stored Kimi sessions with `kimi --session <id>`.
+  </Step>
+
+  <Step title="OpenCode">
+    ```bash
+    herdr integration install opencode
+    ```
+
+    Supports OpenCode V1 `1.18.29` or later and OpenCode V2 (tested with beta `19242`). Herdr installs the server entrypoint at `~/.config/opencode/plugins/herdr-agent-state.js`, the shared TUI plugin at `herdr-tui-session.js`, and a V2 TUI entrypoint at `herdr-opencode/tui.js`. Restart the OpenCode TUI after installation. After OpenCode emits a session-bearing event, Herdr resumes the pane with `opencode --session <id>`.
+  </Step>
+
+  <Step title="Kilo Code CLI">
+    ```bash
+    herdr integration install kilo
+    ```
+
+    Herdr writes the plugin to `~/.config/kilo/plugin/herdr-agent-state.js`. The Kilo config directory must already exist. Herdr resumes stored Kilo sessions with `kilo --session <id>`.
+  </Step>
+
+  <Step title="Hermes Agent">
+    ```bash
+    herdr integration install hermes
+    ```
+
+    Herdr writes `plugins/herdr-agent-state/` under the Hermes home directory and enables `herdr-agent-state` in its `config.yaml`. `HERMES_HOME` defaults to `~/.hermes` on Unix and `%LOCALAPPDATA%\hermes` on Windows. Restart Hermes after installing so the plugin loads. Herdr resumes the pane with `hermes --resume <id>`.
+  </Step>
+
+  <Step title="Qoder CLI">
+    ```bash
+    herdr integration install qodercli
+    ```
+
+    The hook reports Qoder CLI session identity for native restore. Lifecycle state still comes from screen manifest detection. Herdr uses `~/.qoder` by default, or `QODER_CONFIG_DIR` when set. Herdr resumes stored sessions with `qodercli --resume <id>`.
+  </Step>
+
+  <Step title="Qwen Code">
+    ```bash
+    herdr integration install qwen
+    ```
+
+    The `SessionStart` hook reports only Qwen Code's session identity for native restore. Lifecycle state remains under Herdr's screen manifest detection. Herdr uses `~/.qwen` by default, or `QWEN_HOME` when set. Herdr resumes stored sessions with `qwen --resume <id>`.
+  </Step>
+
+  <Step title="Letta Code">
+    ```bash
+    herdr integration install letta
+    ```
+
+    Letta Code integration installation is experimental and CLI-only — it is not listed in the Settings integration screen or the JSON integration API. `herdr integration status` reports it as `letta (experimental)`. The quiet `SessionStart` hook reports the conversation ID for native restore. Herdr uses `~/.letta`. Herdr resumes named conversations with `letta --conversation <id>`.
+  </Step>
+
+  <Step title="Cursor Agent CLI">
+    ```bash
+    herdr integration install cursor
+    ```
+
+    The hook reports session identity through Cursor's `sessionStart` hook. Cursor state comes from Herdr's screen manifest detection. Herdr uses `~/.cursor` by default, or `CURSOR_CONFIG_DIR` when set. After a session start event, Herdr resumes the pane with `cursor-agent --resume <id>`.
+  </Step>
+
+  <Step title="MastraCode">
+    ```bash
+    herdr integration install mastracode
+    ```
+
+    The hook reports MastraCode lifecycle state and thread identity for authoritative `idle`, `working`, and `blocked` status and native restore. MastraCode has no screen manifest fallback — state comes from the hook while MastraCode runs inside a Herdr pane. Herdr resumes stored threads with `mastracode --thread <id>`.
+  </Step>
+
+  <Step title="Antigravity CLI">
+    ```bash
+    herdr integration install antigravity-cli
+    ```
+
+    Herdr uses `~/.gemini/config/` by default, or `ANTIGRAVITY_CLI_CONFIG_DIR` when set. This session-only integration reports the pane's current conversation, but not agent state. Herdr derives working, idle, and blocked from what Antigravity CLI draws on screen. The hook runs on `PreInvocation`, so Herdr learns the conversation once the first prompt is sent. Herdr resumes the pane with `agy --conversation <id>`.
+  </Step>
+
+  <Step title="Grok CLI">
+    ```bash
+    herdr integration install grok
+    ```
+
+    The hook reports session identity through Grok's `SessionStart` hook. Grok state comes from Herdr's screen manifest detection. Herdr uses `~/.grok` by default, or `GROK_HOME` when set. Grok merges every `hooks/*.json` file in that directory, so install writes a self-contained `hooks/herdr.json` and never edits other hook files. After a session start event, Herdr resumes the pane with `grok --resume <id>`.
+  </Step>
+</Steps>
+
+## Custom Status Labels
+
+Integrations report lifecycle state as semantic state only. Add display customization with metadata commands alongside an integration's lifecycle reports:
+
+```bash
+herdr pane report-agent w1:p1 \
+  --source custom:docs \
+  --agent docs-bot \
+  --state working
+```
+
+User hooks that run next to a Herdr-managed integration should use metadata instead of `report-agent`. Metadata changes presentation without taking over the integration's authority:
+
+```bash
+herdr pane report-metadata "$HERDR_PANE_ID" \
+  --source user:claude-title \
+  --agent claude \
+  --title "Refactor auth middleware" \
+  --display-agent "Claude: auth" \
+  --token summary="refactor auth" \
+  --state-label working="refactoring auth" \
+  --ttl-ms 3600000
+```
+
+`--display-agent` changes the visible name. `--state-label` overrides the text shown for a specific semantic state. Tokens and state labels are visual-only — waits, notifications, and workspace rollups still use the semantic state.
+
+## Debug Integration State
+
+List known agents:
+
+```bash
+herdr agent list
+```
+
+Read a pane to verify what Herdr can see:
+
+```bash
+herdr pane read w1:p1 --source recent --lines 50
+```
+
+If integration state looks wrong, confirm the agent is running inside Herdr and that the relevant hook or plugin was installed for the same user account.
+
+## Integrate Your Own Agent
+
+If you build a coding agent, you can report its state and resume command to Herdr from your own code, without adding native support to Herdr. See [Add Herdr Support](/add-herdr-support).

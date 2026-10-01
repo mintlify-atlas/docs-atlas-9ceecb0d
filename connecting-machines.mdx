@@ -1,0 +1,187 @@
+---
+title: "Connecting Multiple SSH Machines in One Herdr Window"
+sidebarTitle: "Machines"
+description: "Add saved SSH machines, navigate a combined agent list, route CLI commands with --machine, recover authentication, and manage reconnects."
+---
+
+Herdr lets you keep your local work and remote agents in a single window. Save an SSH machine once and switch between its workspaces and Local without opening another client. The combined agent list shows all connected machines so you can see where work is running and which agent needs a response.
+
+Each machine keeps its own Herdr server, sessions, and running processes. A lost connection to one machine does not disconnect the others.
+
+## Before You Connect
+
+You need normal SSH access to the remote machine. Verify it first:
+
+```bash
+ssh workbox
+```
+
+`workbox` can be a host from your SSH config. You can also use a full target such as `ssh://you@server:2222`.
+
+<Note>
+  Multi-machine connections support Linux, macOS, and Windows clients connecting to Linux or macOS servers on x86_64 or aarch64, or Windows servers on x86_64.
+</Note>
+
+## Adding a Machine
+
+Run setup in an interactive terminal so Herdr can ask before installing or replacing anything:
+
+```bash
+herdr machine add workbox
+```
+
+Herdr discovers running sessions on the remote host: it selects the only running session automatically, or lets you choose with `Up/Down` and `Enter` when several are running. Press `Esc` or `Ctrl+C` to cancel.
+
+<Accordion title="Session discovery behavior">
+  - If a successful query finds no running sessions, setup uses `default`.
+  - If no Herdr installation is found, setup offers to install it for `default`.
+  - If an installed binary cannot report its sessions, setup reports the error.
+  - Pass `--remote-session <name>` to select a session explicitly and skip discovery.
+</Accordion>
+
+The sidebar shows the machine as `workbox` (the SSH host without any `user@` prefix). Add `--label` to choose a different display name:
+
+```bash
+herdr machine add workbox --label "Build machine"
+```
+
+To target a specific named session:
+
+```bash
+herdr machine add workbox --remote-session agents
+```
+
+Without `--label`, this machine shows as `workbox/agents`. If the default name is already taken, `machine add` asks you to pass `--label`.
+
+After running `herdr machine add`, open the UI with `herdr`. If a local client is already open, added and enabled machines normally appear within a second and connect in the background without changing your current selection.
+
+## Managing Saved Machines
+
+Read profile IDs from the list rather than deriving them from labels or hostnames:
+
+```bash
+herdr machine list
+```
+
+For scripts, add `--json` to get structured output.
+
+```bash
+herdr machine rename <profile-id> --label "New name"
+herdr machine disable <profile-id>
+herdr machine enable <profile-id>
+herdr machine remove <profile-id>
+```
+
+Renaming changes the displayed label without reconnecting. Disabling keeps the profile for later; removing forgets it entirely. Both disconnect only that machine from the client and leave its remote sessions and agents running, even if the host is currently unreachable.
+
+<Note>
+  Removing or disabling the machine you are viewing returns you to Local.
+</Note>
+
+## Navigating Between Machines
+
+Click a machine or one of its workspaces in the sidebar to switch. The selected machine receives your pane input and terminal size, and supplies the visible terminal content and graphics. Other connected machines keep updating their workspace information, agent states, and notifications without streaming their pane screens.
+
+Click the arrow beside any machine to collapse or expand its workspace list without switching away from your current workspace.
+
+For keyboard navigation, press `prefix+w`, then use the workspace navigation keys (Up/Down by default) to highlight workspaces across connected machines in sidebar order. Press `Enter` to activate the highlighted workspace; `Esc` or the prefix key cancels without switching.
+
+<Warning>
+  When highlighting a workspace on another machine, press `Enter` before using other keyboard actions. This prevents pane, tab, workspace, or custom-command shortcuts from accidentally acting on the current machine.
+</Warning>
+
+When a connection is lost, the last workspace and agent state remains visible but dimmed — that is cached information, not live state. Input and navigation into cached panes stay disabled until a fresh connection arrives. Reconnecting never takes selection away from the machine you are using.
+
+## Combined Agent List
+
+When multiple machines are connected, all agents appear in the unified sidebar list. Each agent row shows a `machine` token indicating which host it belongs to.
+
+<Tip>
+  Default agent rows include the `machine` token automatically when multiple machines are present. If you have custom row layouts, add the `machine` token explicitly. [Sidebar row layouts](/configuration#sidebar-row-layouts) support conditional colors for machine labels too.
+</Tip>
+
+## Routing CLI Commands With `--machine`
+
+Workspace, tab, pane IDs, and agent names are scoped to one server. Two machines may both contain `w1:p1` or an agent named `reviewer`. Use `--machine` to route CLI commands to the correct host:
+
+```bash
+herdr --machine "Build machine" agent list
+```
+
+Then pass the same prefix when controlling those remote IDs. The CLI uses the saved profile's SSH target and session directly and does not need an open TUI. Without `--machine`, existing session/socket routing is unchanged.
+
+## Recovering SSH Authentication
+
+On Linux and macOS clients, when `remote.manage_ssh_config = true`, Herdr shares an approved OpenSSH connection across machine add, the sidebar, and saved-machine API commands.
+
+Run a fresh, non-interactive status check:
+
+```bash
+herdr machine status [<label-or-id>] [--json]
+```
+
+**Reachable** means the remote Herdr server is available now, not that every open TUI is connected.
+
+To complete native SSH authentication and verify a saved machine:
+
+```bash
+herdr machine reconnect <label-or-id>
+```
+
+`machine reconnect` does not install or update Herdr. Open clients recheck failed connections within 30 seconds — no restart needed.
+
+<Note>
+  The shared connection uses `ControlPersist 600` (10 minutes of idle time). Active connections can remain open, while corporate policy, the SSH server, or the network may end them sooner. Local Windows recovery is not supported yet.
+</Note>
+
+Clicking **`! auth`**, **`! error`**, or a failed connection's reconnecting status in the sidebar shows a notice with the latest error and the relevant CLI command.
+
+For passphrase-protected keys, load them with `ssh-add` before starting Herdr's non-interactive background connections:
+
+```bash
+ssh-add ~/.ssh/id_ed25519
+```
+
+## Connection Status Reference
+
+<CardGroup cols={2}>
+  <Card title="Reconnecting" icon="arrows-rotate">
+    Herdr retries automatically after a network interruption, sleep, or SSH failure. Repeated failures increase the retry delay up to two minutes.
+  </Card>
+  <Card title="Attention" icon="triangle-exclamation">
+    The target needs an action: authentication, host-key approval, or a compatible server. Other machines remain usable. `! auth` means authentication failed; `! error` indicates another issue. Click the badge for details.
+  </Card>
+  <Card title="Cached (dimmed)" icon="clock-rotate-left">
+    Connection is lost. Last known workspace and agent state is visible but not live. Input is disabled until a fresh connection arrives.
+  </Card>
+  <Card title="Saved-machine file error" icon="file-xmark">
+    An unreadable or invalid catalog leaves current connections unchanged. Herdr shows a notice and automatically retries reading it.
+  </Card>
+</CardGroup>
+
+For non-authentication Attention issues, run the standalone setup command shown in the sidebar in an interactive terminal:
+
+```bash
+herdr --remote workbox
+```
+
+Follow the setup prompts; open clients retry automatically.
+
+## SSH Agent Forwarding
+
+For Git authentication or SSH signing inside remote panes, enable `ForwardAgent yes` for the trusted host in your SSH config:
+
+```text
+Host workbox
+  HostName server.example.com
+  User you
+  ForwardAgent yes
+```
+
+Herdr does not enable forwarding for you. Updated Linux and macOS servers give panes a stable agent address so existing and new panes can use the forwarded agent after `--remote` or a saved machine reconnects.
+
+## Updates and Saved Data
+
+Saved profiles contain only an opaque ID, label, SSH target, explicit remote session, and enabled state. Herdr does not store passwords, private keys, agent tickets, or SSH control sockets in the catalog. Authentication stays with OpenSSH.
+
+Updating a compatible client does not replace the running remote server or stop its agents. When you need new server-side behavior, update that server explicitly. Normal replacement asks before stopping the server and its pane processes.

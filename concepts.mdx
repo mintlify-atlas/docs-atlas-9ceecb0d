@@ -1,0 +1,97 @@
+---
+title: "Herdr Core Concepts: Workspaces, Agents, and Sessions"
+sidebarTitle: "Concepts"
+description: "Learn how Herdr organises work into sessions, workspaces, tabs, and panes — and how it tracks agent state, modes, and the client/server model."
+---
+
+Herdr is a terminal workspace manager. It keeps real terminal processes running and adds structure around them — a hierarchy of sessions, workspaces, tabs, and panes — so you and your agents always know where things are and what state they are in. This page explains every first-class concept you will encounter while using Herdr.
+
+## Workspace
+
+A workspace is the top-level project container. Use one workspace per repo, task, or investigation.
+
+A workspace owns tabs and panes. Its sidebar state rolls up from the agents inside it, so you can see at a glance which project needs your attention without drilling into individual panes.
+
+## Tab
+
+A tab is a layout inside a workspace. Use tabs to separate views such as `agents`, `logs`, `server`, or `review`.
+
+Tabs are addressable from the CLI and socket API, so agents and scripts can navigate to a specific tab by name or index without manual interaction.
+
+## Pane
+
+A pane is a real terminal. Herdr renders the terminal output, sends input back to the process, and preserves the pane across client detach.
+
+Panes can be split right or down. They can be renamed manually, read from the CLI, sent input, and closed. Because panes live in the server — not the client — they survive closing the terminal window, losing an SSH connection, or switching machines.
+
+## Mouse UI
+
+Herdr is mouse-native. You can click panes, tabs, workspaces, and agents to focus them. You can drag split borders to resize, select text, and use right-click context menus. Everything in Herdr is also reachable by mouse; keyboard bindings are an optional layer on top.
+
+If you prefer keyboard-only control, or you want Herdr to stop capturing mouse input, disable mouse capture in your config:
+
+```toml
+[ui]
+mouse_capture = false
+```
+
+## Agent
+
+An agent is a process Herdr recognises inside a pane. Herdr detects agents from foreground processes, screen manifests, and optional integrations.
+
+Agent states are surfaced in the sidebar, in the CLI, and via the socket API:
+
+| State | Meaning |
+| --- | --- |
+| `blocked` | The agent needs input, approval, or a decision. |
+| `working` | The agent is actively running. |
+| `done` | The agent finished and you have not looked at it yet. |
+| `idle` | The agent is finished or waiting and has been seen. |
+| `unknown` | Herdr cannot confidently classify the state. |
+
+<Note>
+  Each client tracks which completions it has displayed. Viewing a completion in one client does not clear another client's Done badge. CLI and API statuses use the server's seen state, so they need not match a particular client's badge. Both `idle` and `done` mean the agent is ready for input.
+</Note>
+
+## Session
+
+A session is a persistent Herdr server namespace. The default `herdr` command attaches to the default session.
+
+Named sessions are separate runtime namespaces with their own panes, sockets, and persisted state:
+
+```bash
+herdr session list
+herdr session attach work
+herdr session attach side-project
+```
+
+<Tip>
+  Use workspaces first. Reach for named sessions only when you need completely separate panes, sockets, and persisted runtime state — for example, to isolate unrelated long-running environments.
+</Tip>
+
+## Client and server
+
+By default, Herdr runs as a background server plus one or more attached clients.
+
+The **server** owns panes and process state. The **client** is the terminal UI attached to that server.
+
+- With one attached client, all tabs follow its size.
+- With multiple clients, each can view its own workspace and tab. Different viewed tabs follow their respective clients; when clients view the same tab, the last one to focus, select, or interact with it controls that tab's pane sizes.
+
+Detach the client with `ctrl+b q`. The server and all agents continue running. To end the session and stop its panes, stop the server:
+
+```bash
+herdr server stop
+```
+
+## Modes
+
+Herdr has three modes that determine how key presses are interpreted:
+
+**Terminal mode** — the default. Key presses are sent directly to the focused pane process.
+
+**Prefix mode** — entered by pressing the prefix key (default `ctrl+b`). Herdr waits for one action key, then returns to terminal mode. For example, `ctrl+b c` opens a new tab.
+
+**Navigate mode** — the persistent workspace navigation surface. Reached with `prefix+w`. Use it to move between workspaces without leaving the keyboard.
+
+Press `prefix+?` inside Herdr at any time to see every active key binding. See [Keyboard](https://herdr.dev/docs/keyboard/) if the prefix concept is new to you or if you want to go prefix-free.

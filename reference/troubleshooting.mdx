@@ -1,0 +1,232 @@
+---
+title: "Troubleshooting Herdr: Common Issues and Fixes"
+sidebarTitle: "Troubleshooting"
+description: "Diagnose and fix common Herdr problems: PATH setup, client-server connectivity, agent state, tmux conflicts, SSH auth recovery, logs, and more."
+---
+
+Before diving into specific issues, collect your versions and session status so you can share them when reporting a problem. Run `herdr -V` to print the binary version, and `herdr status` to confirm whether the background server is reachable. Also note your operating system, outer terminal name and version, whether the session is local or remote, and whether tmux is involved.
+
+<AccordionGroup>
+
+<Accordion title="The `herdr` command is not found (PATH)">
+
+After installing Herdr, the shell may not find it until the environment is reloaded.
+
+Restart your terminal so it reloads its `PATH`. Then confirm the Herdr install directory is present:
+
+```bash
+echo $PATH
+```
+
+For package-manager installs (Homebrew, mise, Nix), use that package manager to install or update Herdr and expose it on `PATH`. Direct installer scripts place the binary in `~/.local/bin/herdr`; if that directory is not in `PATH`, add it to your shell profile.
+
+See [Install Herdr](/install) for verification steps.
+
+</Accordion>
+
+<Accordion title="Herdr client fails to connect to the server">
+
+Run `herdr status` first to see whether the server is reachable and which socket it is using. If the server is not running, start Herdr normally:
+
+```bash
+herdr
+```
+
+If the status command reports a socket mismatch or you are connecting over SSH, verify that normal OpenSSH works first:
+
+```bash
+ssh <host>
+```
+
+For remote attach failures, see the [Remote attach cannot authenticate](#remote-attach-cannot-authenticate) entry below and [Persistence and remote access](/reference/persistence-remote).
+
+</Accordion>
+
+<Accordion title="Wrong agent state / `herdr agent explain` usage">
+
+Each pane is marked working, blocked, or idle. If the status shown seems wrong, check the integration version for your agent:
+
+```bash
+herdr integration status
+```
+
+Outdated integrations can misreport state. Reinstall an outdated integration with:
+
+```bash
+herdr integration install <agent>
+```
+
+To understand why an agent pane is in a particular state, use:
+
+```bash
+herdr agent explain
+```
+
+This prints the reasoning behind the current state classification for the focused pane.
+
+</Accordion>
+
+<Accordion title="Detection manifests and local overrides">
+
+Herdr uses detection manifests to identify agents and classify pane states. If an agent is not detected correctly — for example, a custom build or a locally modified script — you can provide a local override.
+
+Check what integration is active for a pane with:
+
+```bash
+herdr integration status
+```
+
+Local manifest overrides live in the Herdr config directory (`~/.config/herdr/` by default). Consult [Add Herdr support to your agent](/add-herdr-support) for the manifest format and the override path. Local overrides take precedence over bundled manifests.
+
+</Accordion>
+
+<Accordion title="tmux conflict: HERDR_ENV check in shell config">
+
+Herdr and tmux can conflict when both are running and shell config files (`.bashrc`, `.zshrc`) unconditionally launch or configure one inside the other.
+
+Guard any tmux auto-start or Herdr auto-start in your shell config with an environment check:
+
+```bash
+# Only start tmux when NOT already inside Herdr
+if [ -z "$HERDR_ENV" ] && [ -z "$TMUX" ]; then
+  tmux new-session -A -s main
+fi
+```
+
+`HERDR_ENV` is set by Herdr in every pane it owns. Checking it prevents nested multiplexers and duplicate session launches.
+
+</Accordion>
+
+<Accordion title="VM or sandbox process detection (HERDR_AGENT, HERDR_PROCESS_DETECTION)">
+
+In restricted environments such as VMs, containers, or sandboxes, Herdr's process-detection heuristics may fail to classify panes correctly because `/proc` is absent, process trees are shallow, or agent binaries are in non-standard locations.
+
+Set `HERDR_AGENT` in the pane environment to tell Herdr which agent owns that pane explicitly:
+
+```bash
+HERDR_AGENT=claude-code claude
+```
+
+To disable automatic process detection entirely and rely only on integration-reported state, set:
+
+```bash
+HERDR_PROCESS_DETECTION=0
+```
+
+This is useful when process inspection causes errors or performance problems inside constrained runtimes.
+
+</Accordion>
+
+<Accordion title="Remote attach cannot authenticate (SSH authentication recovery)">
+
+First confirm that normal OpenSSH works independently:
+
+```bash
+ssh <host>
+```
+
+If plain SSH works but `herdr --remote` still fails, the issue is usually a passphrase-protected key in a non-interactive context (CI, mobile terminal, script). Load the key into `ssh-agent` before running remote attach:
+
+```bash
+ssh-add
+herdr --remote workbox
+```
+
+On Linux and macOS clients with `remote.manage_ssh_config=true`, Herdr shares an OpenSSH control connection. You can check and repair saved-machine connectivity without opening the UI:
+
+```bash
+herdr machine status <label-or-id>
+herdr machine reconnect <label-or-id>
+```
+
+`machine reconnect` completes native SSH authentication and verifies the saved machine. Open clients recheck failed connections within 30 seconds — no restart needed.
+
+For Git authentication or SSH signing inside remote panes, enable agent forwarding for the trusted host in your SSH config:
+
+```
+ForwardAgent yes
+```
+
+Herdr does not enable forwarding automatically. See [Connecting machines](/connecting-machines#recovering-ssh-authentication) and [Persistence and remote access](/reference/persistence-remote).
+
+</Accordion>
+
+<Accordion title="Windows endpoint security workaround">
+
+On Windows, endpoint security software (antivirus, EDR agents) can intercept or block Herdr's ConPTY-based process creation and terminal I/O, causing hangs, missing output, or install failures.
+
+Add the Herdr install directory and its ConPTY runtime files to your endpoint security exclusion list. The Windows package installs an app-local ConPTY runtime alongside the `herdr.exe` binary; both paths may need to be excluded.
+
+For install or update problems specifically caused by endpoint policy, see [endpoint-protected Windows](https://herdr.dev/docs/windows-beta/) for the approved deployment path.
+
+</Accordion>
+
+<Accordion title="Updating Herdr: running session still shows old version">
+
+Updating the binary does not replace a compatible server that is already running. The new client attaches to the existing compatible server.
+
+Start Herdr again to pick up client changes. If you also need server-side changes from the release, stop the current session first and relaunch:
+
+```bash
+herdr server stop
+herdr
+```
+
+<Warning>
+Stopping the server exits its pane processes. For named sessions, use `herdr session stop <name>` instead of `herdr server stop`.
+</Warning>
+
+For Homebrew, mise, and Nix installs, `herdr update` is disabled — use your package manager to update Herdr. Live handoff (`herdr update --handoff`) is available only for installs managed by Herdr's own updater.
+
+See [Install Herdr](/install#update) for updater, package-manager, and live-handoff behavior.
+
+</Accordion>
+
+<Accordion title="How to get diagnostic logs">
+
+Herdr logs live in `~/.config/herdr/` by default:
+
+```text
+herdr.log
+herdr-client.log
+herdr-server.log
+```
+
+For more detail, set the log level before launching:
+
+```bash
+HERDR_LOG=herdr=debug herdr
+```
+
+Include the current log file and any rotated siblings (same names with a numeric suffix) when reporting a problem.
+
+See [Configuration](/configuration) for log path overrides and rotation settings.
+
+</Accordion>
+
+<Accordion title="Common config file mistakes">
+
+A malformed `config.toml` causes Herdr to fall back to defaults and may log a parse error on startup. Check `herdr.log` for `config` or `parse` entries.
+
+Common mistakes:
+
+| Mistake | Symptom | Fix |
+| --- | --- | --- |
+| Missing `[section]` header | Setting silently ignored | Add the correct `[ui]`, `[session]`, or `[remote]` header above the key |
+| Wrong value type (string instead of bool) | Parse error in log | Check the configuration reference for the expected type |
+| Editing the wrong file | Changes have no effect | Confirm with `herdr status` which config path is active |
+| Stale session socket after config change | Client connects to old server | Run `herdr server stop` and relaunch |
+
+To reload config without detaching (client settings only):
+
+Use the UI's `reload config` action. Server-side settings require a server restart.
+
+See [Configuration](/configuration) for the full reference.
+
+</Accordion>
+
+</AccordionGroup>
+
+<Note>
+Always include `herdr -V` output, your OS, and the relevant log snippet when opening a GitHub issue. The [Herdr issue tracker](https://github.com/herdrdev/herdr/issues) has confirmed boundary captures and upstream references for terminal-specific bugs.
+</Note>
